@@ -78,7 +78,10 @@ class _RiderBookingScreenState extends State<RiderBookingScreen> {
 
     try {
       final pickup = GeoPoint(
-        latitude: _parseCoordinate(_pickupLatController.text, 'pickup latitude'),
+        latitude: _parseCoordinate(
+          _pickupLatController.text,
+          'pickup latitude',
+        ),
         longitude: _parseCoordinate(
           _pickupLngController.text,
           'pickup longitude',

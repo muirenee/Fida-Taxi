@@ -323,10 +323,7 @@ final class DriverAvailabilityState {
 }
 
 final class RideOfferBatch {
-  const RideOfferBatch({
-    required this.offers,
-    required this.generatedAt,
-  });
+  const RideOfferBatch({required this.offers, required this.generatedAt});
 
   final List<RideSnapshot> offers;
   final DateTime generatedAt;
@@ -339,11 +336,7 @@ final class RideOfferBatch {
 
     return RideOfferBatch(
       offers: rawOffers
-          .map(
-            (offer) => RideSnapshot.fromJson(
-              _requiredMap(offer, 'offer'),
-            ),
-          )
+          .map((offer) => RideSnapshot.fromJson(_requiredMap(offer, 'offer')))
           .toList(growable: false),
       generatedAt: _requiredDateTime(json['generated_at'], 'generated_at'),
     );
