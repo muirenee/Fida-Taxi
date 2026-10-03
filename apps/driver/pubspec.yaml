@@ -1,0 +1,24 @@
+name: fida_taxi_driver
+description: Driver application for Fida Taxi.
+version: 0.1.0+1
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ">=3.12.0 <4.0.0"
+  flutter: ">=3.47.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^3.4.3
+  fida_core: ^0.1.0
+  fida_design_system: ^0.1.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

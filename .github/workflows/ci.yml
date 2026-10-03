@@ -1,0 +1,79 @@
+name: Fida Taxi CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "feature/**"
+      - "modernization/**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fida-taxi-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Analyze, Test and Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.3"
+          channel: stable
+          cache: true
+
+      - name: Disable Flutter analytics
+        run: flutter config --no-analytics
+
+      - name: Display toolchain versions
+        run: |
+          flutter --version
+          dart --version
+          java -version
+
+      - name: Bootstrap workspace
+        run: ./setup_workspace.sh --bootstrap-only
+
+      - name: Verify reproducible bootstrap
+        run: git diff --exit-code -- apps packages pubspec.lock
+
+      - name: List workspace packages
+        run: dart pub workspace list
+
+      - name: Check formatting
+        run: dart run melos run format:check --no-select
+
+      - name: Static analysis
+        run: dart run melos run analyze --no-select
+
+      - name: Pure Dart tests
+        run: dart run melos run test:dart --no-select
+
+      - name: Flutter tests
+        run: dart run melos run test:flutter --no-select
+
+      - name: Build Rider Android debug APK
+        working-directory: apps/rider
+        run: flutter build apk --debug --no-pub
+
+      - name: Build Driver Android debug APK
+        working-directory: apps/driver
+        run: flutter build apk --debug --no-pub

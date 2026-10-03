@@ -1,0 +1,39 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+.pub/
+.pub-cache/
+build/
+coverage/
+pubspec_overrides.yaml
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Android
+**/android/.gradle/
+**/android/local.properties
+**/android/key.properties
+*.jks
+*.keystore
+
+# iOS
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.key
+service-account*.json
+google-services.json
+GoogleService-Info.plist
