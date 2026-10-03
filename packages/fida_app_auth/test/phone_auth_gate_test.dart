@@ -13,7 +13,7 @@ void main() {
           appName: 'Fida Taxi',
           expectedRole: AuthRole.rider,
           initialBaseUrl: 'https://api.example.test/api/v1',
-          authenticatedBuilder: (context, session, signOut) {
+          authenticatedBuilder: (context, session, api, signOut) {
             return const SizedBox.shrink();
           },
         ),
@@ -34,7 +34,7 @@ void main() {
           appName: 'Fida Taxi Driver',
           expectedRole: AuthRole.driver,
           initialBaseUrl: 'https://api.example.test/api/v1',
-          authenticatedBuilder: (context, session, signOut) {
+          authenticatedBuilder: (context, session, api, signOut) {
             return const SizedBox.shrink();
           },
         ),
