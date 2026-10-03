@@ -95,7 +95,7 @@ final class FidaCoreApi {
     required String tripId,
   }) async {
     final json = await _get(
-      'rides/' + Uri.encodeComponent(tripId),
+      'rides/${Uri.encodeComponent(tripId)}',
       accessToken: session.accessToken,
     );
     return RideSnapshot.fromJson(json);
@@ -107,7 +107,7 @@ final class FidaCoreApi {
     String? reason,
   }) async {
     final json = await _post(
-      'rides/' + Uri.encodeComponent(tripId) + '/cancel',
+      'rides/${Uri.encodeComponent(tripId)}/cancel',
       body: <String, dynamic>{
         if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
       },
@@ -124,13 +124,13 @@ final class FidaCoreApi {
   }) async {
     _requireRole(session, AuthRole.driver);
 
+    final body = <String, dynamic>{'is_available': isAvailable};
+    if (latitude != null) body['latitude'] = latitude;
+    if (longitude != null) body['longitude'] = longitude;
+
     final json = await _post(
       'rides/driver/availability',
-      body: <String, dynamic>{
-        'is_available': isAvailable,
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
-      },
+      body: body,
       accessToken: session.accessToken,
     );
 
@@ -161,7 +161,7 @@ final class FidaCoreApi {
   }) async {
     _requireRole(session, AuthRole.driver);
     final json = await _post(
-      'rides/' + Uri.encodeComponent(tripId) + '/accept',
+      'rides/${Uri.encodeComponent(tripId)}/accept',
       body: const <String, dynamic>{},
       accessToken: session.accessToken,
     );
@@ -175,7 +175,7 @@ final class FidaCoreApi {
   }) async {
     _requireRole(session, AuthRole.driver);
     final json = await _post(
-      'rides/' + Uri.encodeComponent(tripId) + '/action',
+      'rides/${Uri.encodeComponent(tripId)}/action',
       body: <String, dynamic>{'action': action.wireValue},
       accessToken: session.accessToken,
     );
