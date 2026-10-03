@@ -27,10 +27,7 @@ class FidaTaxiApp extends StatelessWidget {
         appName: 'Fida Taxi',
         expectedRole: AuthRole.rider,
         authenticatedBuilder: (context, session, signOut) {
-          return RideFoundationScreen(
-            session: session,
-            onSignOut: signOut,
-          );
+          return RideFoundationScreen(session: session, onSignOut: signOut);
         },
       ),
     );
