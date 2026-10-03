@@ -33,6 +33,22 @@ void main() {
     });
   });
 
+  group('VehicleType', () {
+    test('matches the backend wire contract', () {
+      expect(VehicleType.taxi.wireValue, 'taxi');
+      expect(VehicleType.moto.wireValue, 'moto');
+      expect(VehicleType.premium.wireValue, 'premium');
+      expect(VehicleType.tukTuk.wireValue, 'tuk_tuk');
+      expect(VehicleType.ev.wireValue, 'ev');
+      expect(VehicleType.accessible.wireValue, 'accessible');
+      expect(VehicleType.other.wireValue, 'other');
+    });
+
+    test('rejects an unknown backend vehicle type', () {
+      expect(() => VehicleType.fromWire('standard'), throwsFormatException);
+    });
+  });
+
   group('Ride', () {
     test('round-trips through JSON', () {
       final createdAt = DateTime.utc(2026, 10, 3, 10);
@@ -44,7 +60,7 @@ void main() {
         status: RideStatus.driverAssigned,
         pickup: GeoPoint(latitude: -1.9441, longitude: 30.0619),
         dropoff: GeoPoint(latitude: -1.9706, longitude: 30.1044),
-        vehicleType: VehicleType.standard,
+        vehicleType: VehicleType.taxi,
         quotedFare: Money(minorUnits: 8500, currency: 'RWF'),
         route: RouteSummary(
           encodedPolyline: 'encoded-polyline',

@@ -9,6 +9,7 @@ workspace:
   - apps/rider
   - apps/driver
   - packages/fida_core
+  - packages/fida_api
   - packages/fida_design_system
 
 dev_dependencies:

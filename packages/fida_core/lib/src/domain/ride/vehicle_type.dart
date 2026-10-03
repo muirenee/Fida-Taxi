@@ -1,9 +1,11 @@
 enum VehicleType {
-  standard('standard'),
-  comfort('comfort'),
-  xl('xl'),
+  taxi('taxi'),
   moto('moto'),
-  electric('electric');
+  premium('premium'),
+  tukTuk('tuk_tuk'),
+  ev('ev'),
+  accessible('accessible'),
+  other('other');
 
   const VehicleType(this.wireValue);
 
