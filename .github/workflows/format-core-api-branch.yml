@@ -1,0 +1,45 @@
+name: Normalize Core API Branch
+
+on:
+  push:
+    branches:
+      - feature/core-api-contract
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/core-api-contract
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.3"
+          channel: stable
+          cache: true
+
+      - name: Bootstrap workspace
+        run: ./setup_workspace.sh --bootstrap-only
+
+      - name: Format Dart sources
+        run: dart format apps packages
+
+      - name: Commit normalized sources
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps packages pubspec.lock
+          git commit -m "chore: normalize auth UI formatting"
+          git push origin HEAD:feature/core-api-contract
