@@ -8,10 +8,8 @@ import 'models/auth_models.dart';
 import 'models/ride_models.dart';
 
 final class FidaCoreApi {
-  FidaCoreApi({
-    required this.configuration,
-    http.Client? client,
-  }) : _client = client ?? http.Client();
+  FidaCoreApi({required this.configuration, http.Client? client})
+    : _client = client ?? http.Client();
 
   final FidaApiConfiguration configuration;
   final http.Client _client;

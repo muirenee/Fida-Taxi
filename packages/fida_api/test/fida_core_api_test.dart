@@ -103,10 +103,7 @@ void main() {
         final payload = Map<String, dynamic>.from(
           jsonDecode(request.body) as Map<Object?, Object?>,
         );
-        expect(
-          payload['rider_id'],
-          'd79dd542-25f1-4a80-9722-454dc6a564cb',
-        );
+        expect(payload['rider_id'], 'd79dd542-25f1-4a80-9722-454dc6a564cb');
         expect(payload['vehicle_type'], 'taxi');
         expect(payload['payment_method'], 'cash');
 
