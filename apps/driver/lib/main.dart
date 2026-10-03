@@ -1,3 +1,5 @@
+import 'package:fida_api/fida_api.dart';
+import 'package:fida_app_auth/fida_app_auth.dart';
 import 'package:fida_design_system/fida_design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,20 +23,45 @@ class FidaTaxiApp extends StatelessWidget {
       theme: FidaTheme.light,
       darkTheme: FidaTheme.dark,
       themeMode: ThemeMode.system,
-      home: const RideFoundationScreen(),
+      home: PhoneAuthGate(
+        appName: 'Fida Taxi Driver',
+        expectedRole: AuthRole.driver,
+        authenticatedBuilder: (context, session, signOut) {
+          return RideFoundationScreen(
+            session: session,
+            onSignOut: signOut,
+          );
+        },
+      ),
     );
   }
 }
 
 class RideFoundationScreen extends ConsumerWidget {
-  const RideFoundationScreen({super.key});
+  const RideFoundationScreen({
+    required this.session,
+    required this.onSignOut,
+    super.key,
+  });
+
+  final AuthSession session;
+  final VoidCallback onSignOut;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lifecycle = ref.watch(driverRideLifecycleControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Fida Taxi Driver')),
+      appBar: AppBar(
+        title: const Text('Fida Taxi Driver'),
+        actions: <Widget>[
+          IconButton(
+            tooltip: 'Sign out',
+            onPressed: onSignOut,
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(FidaSpacing.lg),
@@ -42,14 +69,18 @@ class RideFoundationScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                'Ride lifecycle',
+                'Driver connected',
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
-              const SizedBox(height: FidaSpacing.md),
+              const SizedBox(height: FidaSpacing.xs),
+              Text('Driver: ${session.driverId}'),
+              const SizedBox(height: FidaSpacing.xl),
               Text(
-                'Status: ${lifecycle.status.wireValue}',
+                'Ride lifecycle',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
+              const SizedBox(height: FidaSpacing.md),
+              Text('Status: ${lifecycle.status.wireValue}'),
               const SizedBox(height: FidaSpacing.xs),
               Text(
                 lifecycle.hasServerRide

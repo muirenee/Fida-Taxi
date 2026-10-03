@@ -12,6 +12,8 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_riverpod: ^3.4.3
+  fida_api: ^0.1.0
+  fida_app_auth: ^0.1.0
   fida_core: ^0.1.0
   fida_design_system: ^0.1.0
 
