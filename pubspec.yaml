@@ -1,0 +1,54 @@
+name: fida_taxi_workspace
+description: Fida Taxi clean-architecture monorepo.
+publish_to: none
+
+environment:
+  sdk: ">=3.12.0 <4.0.0"
+
+workspace:
+  - apps/rider
+  - apps/driver
+  - packages/fida_core
+  - packages/fida_design_system
+
+dev_dependencies:
+  melos: ^8.9.0
+
+melos:
+  scripts:
+    format:
+      description: Format Dart sources across the workspace.
+      run: dart format apps packages
+
+    format:check:
+      description: Verify Dart formatting without changing files.
+      run: dart format --output=none --set-exit-if-changed apps packages
+
+    analyze:
+      description: Analyze every Dart and Flutter package.
+      exec:
+        command: dart analyze .
+        failFast: true
+      packageFilters:
+        dirExists:
+          - lib
+
+    test:dart:
+      description: Run tests for pure Dart packages.
+      exec:
+        command: dart test
+        failFast: true
+      packageFilters:
+        flutter: false
+        dirExists:
+          - test
+
+    test:flutter:
+      description: Run tests for Flutter packages.
+      exec:
+        command: flutter test --no-pub
+        failFast: true
+      packageFilters:
+        flutter: true
+        dirExists:
+          - test
