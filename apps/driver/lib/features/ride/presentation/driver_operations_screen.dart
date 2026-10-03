@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fida_api/fida_api.dart';
+import 'package:fida_core/fida_core.dart';
 import 'package:fida_design_system/fida_design_system.dart';
 import 'package:flutter/material.dart';
 
