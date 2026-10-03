@@ -10,9 +10,9 @@ final class RideLifecycleState {
   });
 
   const RideLifecycleState.initial()
-      : ride = null,
-        isSynchronizing = false,
-        failureMessage = null;
+    : ride = null,
+      isSynchronizing = false,
+      failureMessage = null;
 
   final Ride? ride;
   final bool isSynchronizing;
@@ -33,8 +33,9 @@ final class RideLifecycleState {
     return RideLifecycleState(
       ride: ride ?? this.ride,
       isSynchronizing: isSynchronizing ?? this.isSynchronizing,
-      failureMessage:
-          clearFailure ? null : failureMessage ?? this.failureMessage,
+      failureMessage: clearFailure
+          ? null
+          : failureMessage ?? this.failureMessage,
     );
   }
 
@@ -48,11 +49,7 @@ final class RideLifecycleState {
   }
 
   @override
-  int get hashCode => Object.hash(
-        ride,
-        isSynchronizing,
-        failureMessage,
-      );
+  int get hashCode => Object.hash(ride, isSynchronizing, failureMessage);
 
   @override
   String toString() {

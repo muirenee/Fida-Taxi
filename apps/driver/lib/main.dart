@@ -7,11 +7,7 @@ import 'features/ride/presentation/controllers/ride_lifecycle_controller.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  runApp(
-    const ProviderScope(
-      child: FidaTaxiApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: FidaTaxiApp()));
 }
 
 class FidaTaxiApp extends StatelessWidget {
@@ -34,16 +30,11 @@ class RideFoundationScreen extends ConsumerWidget {
   const RideFoundationScreen({super.key});
 
   @override
-  Widget build(
-    BuildContext context,
-    WidgetRef ref,
-  ) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final lifecycle = ref.watch(driverRideLifecycleControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Fida Taxi Driver'),
-      ),
+      appBar: AppBar(title: const Text('Fida Taxi Driver')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(FidaSpacing.lg),
@@ -66,9 +57,7 @@ class RideFoundationScreen extends ConsumerWidget {
                     : 'No active server ride.',
               ),
               const SizedBox(height: FidaSpacing.xs),
-              Text(
-                'Revision: ${lifecycle.revision}',
-              ),
+              Text('Revision: ${lifecycle.revision}'),
               if (lifecycle.isSynchronizing) ...<Widget>[
                 const SizedBox(height: FidaSpacing.lg),
                 const LinearProgressIndicator(),

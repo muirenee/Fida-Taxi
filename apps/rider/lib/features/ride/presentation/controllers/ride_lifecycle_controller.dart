@@ -5,8 +5,8 @@ import 'ride_lifecycle_state.dart';
 
 final rideLifecycleControllerProvider =
     NotifierProvider<RideLifecycleController, RideLifecycleState>(
-  RideLifecycleController.new,
-);
+      RideLifecycleController.new,
+    );
 
 final class RideLifecycleController extends Notifier<RideLifecycleState> {
   static const RideTransitionPolicy _transitionPolicy =
@@ -22,10 +22,7 @@ final class RideLifecycleController extends Notifier<RideLifecycleState> {
   }
 
   void markSynchronizing() {
-    state = state.copyWith(
-      isSynchronizing: true,
-      clearFailure: true,
-    );
+    state = state.copyWith(isSynchronizing: true, clearFailure: true);
   }
 
   void applyAuthoritativeRide(Ride ride) {
@@ -46,17 +43,11 @@ final class RideLifecycleController extends Notifier<RideLifecycleState> {
       );
 
       if (!isReachable) {
-        throw InvalidRideTransition(
-          from: currentRide.status,
-          to: ride.status,
-        );
+        throw InvalidRideTransition(from: currentRide.status, to: ride.status);
       }
     }
 
-    state = RideLifecycleState(
-      ride: ride,
-      isSynchronizing: false,
-    );
+    state = RideLifecycleState(ride: ride, isSynchronizing: false);
   }
 
   void reportFailure(String message) {
@@ -71,9 +62,7 @@ final class RideLifecycleController extends Notifier<RideLifecycleState> {
   }
 
   void clearFailure() {
-    state = state.copyWith(
-      clearFailure: true,
-    );
+    state = state.copyWith(clearFailure: true);
   }
 
   void reset() {

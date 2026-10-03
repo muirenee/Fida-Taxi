@@ -76,10 +76,12 @@ final class RouteSummary {
       trafficDurationSeconds: clearTrafficDuration
           ? null
           : trafficDurationSeconds ?? this.trafficDurationSeconds,
-      boundsSouthWest:
-          clearBounds ? null : boundsSouthWest ?? this.boundsSouthWest,
-      boundsNorthEast:
-          clearBounds ? null : boundsNorthEast ?? this.boundsNorthEast,
+      boundsSouthWest: clearBounds
+          ? null
+          : boundsSouthWest ?? this.boundsSouthWest,
+      boundsNorthEast: clearBounds
+          ? null
+          : boundsNorthEast ?? this.boundsNorthEast,
     );
   }
 
@@ -142,10 +144,7 @@ final class RouteSummary {
     );
   }
 
-  static GeoPoint? _optionalGeoPoint(
-    Object? value,
-    String fieldName,
-  ) {
+  static GeoPoint? _optionalGeoPoint(Object? value, String fieldName) {
     if (value == null) {
       return null;
     }
@@ -156,9 +155,7 @@ final class RouteSummary {
       );
     }
 
-    return GeoPoint.fromJson(
-      Map<String, dynamic>.from(value),
-    );
+    return GeoPoint.fromJson(Map<String, dynamic>.from(value));
   }
 
   @override
@@ -175,13 +172,13 @@ final class RouteSummary {
 
   @override
   int get hashCode => Object.hash(
-        encodedPolyline,
-        distanceMeters,
-        durationSeconds,
-        trafficDurationSeconds,
-        boundsSouthWest,
-        boundsNorthEast,
-      );
+    encodedPolyline,
+    distanceMeters,
+    durationSeconds,
+    trafficDurationSeconds,
+    boundsSouthWest,
+    boundsNorthEast,
+  );
 
   @override
   String toString() {

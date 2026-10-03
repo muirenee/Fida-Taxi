@@ -1,9 +1,7 @@
 final class GeoPoint {
-  GeoPoint({
-    required double latitude,
-    required double longitude,
-  })  : latitude = _validateLatitude(latitude),
-        longitude = _validateLongitude(longitude);
+  GeoPoint({required double latitude, required double longitude})
+    : latitude = _validateLatitude(latitude),
+      longitude = _validateLongitude(longitude);
 
   final double latitude;
   final double longitude;
@@ -32,10 +30,7 @@ final class GeoPoint {
     return value;
   }
 
-  GeoPoint copyWith({
-    double? latitude,
-    double? longitude,
-  }) {
+  GeoPoint copyWith({double? latitude, double? longitude}) {
     return GeoPoint(
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
@@ -43,10 +38,7 @@ final class GeoPoint {
   }
 
   Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'latitude': latitude,
-      'longitude': longitude,
-    };
+    return <String, dynamic>{'latitude': latitude, 'longitude': longitude};
   }
 
   factory GeoPoint.fromJson(Map<String, dynamic> json) {
@@ -54,15 +46,11 @@ final class GeoPoint {
     final longitudeValue = json['longitude'];
 
     if (latitudeValue is! num) {
-      throw const FormatException(
-        'GeoPoint.latitude must be numeric.',
-      );
+      throw const FormatException('GeoPoint.latitude must be numeric.');
     }
 
     if (longitudeValue is! num) {
-      throw const FormatException(
-        'GeoPoint.longitude must be numeric.',
-      );
+      throw const FormatException('GeoPoint.longitude must be numeric.');
     }
 
     return GeoPoint(

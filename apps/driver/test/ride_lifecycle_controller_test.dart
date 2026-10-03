@@ -4,10 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fida_taxi_driver/features/ride/presentation/controllers/ride_lifecycle_controller.dart';
 
 void main() {
-  Ride buildRide({
-    required RideStatus status,
-    required int revision,
-  }) {
+  Ride buildRide({required RideStatus status, required int revision}) {
     final timestamp = DateTime.utc(2026, 10, 3, 9);
 
     return Ride(
@@ -15,19 +12,10 @@ void main() {
       riderId: 'rider_001',
       assignedDriverId: 'driver_001',
       status: status,
-      pickup: GeoPoint(
-        latitude: -1.9441,
-        longitude: 30.0619,
-      ),
-      dropoff: GeoPoint(
-        latitude: -1.9706,
-        longitude: 30.1044,
-      ),
+      pickup: GeoPoint(latitude: -1.9441, longitude: 30.0619),
+      dropoff: GeoPoint(latitude: -1.9706, longitude: 30.1044),
       vehicleType: VehicleType.standard,
-      quotedFare: Money(
-        minorUnits: 7000,
-        currency: 'RWF',
-      ),
+      quotedFare: Money(minorUnits: 7000, currency: 'RWF'),
       revision: revision,
       createdAt: timestamp,
       updatedAt: timestamp.add(Duration(seconds: revision)),
@@ -43,22 +31,14 @@ void main() {
     );
 
     controller.applyAuthoritativeRide(
-      buildRide(
-        status: RideStatus.driverAssigned,
-        revision: 4,
-      ),
+      buildRide(status: RideStatus.driverAssigned, revision: 4),
     );
 
     controller.applyAuthoritativeRide(
-      buildRide(
-        status: RideStatus.driverEnRoute,
-        revision: 5,
-      ),
+      buildRide(status: RideStatus.driverEnRoute, revision: 5),
     );
 
-    final state = container.read(
-      driverRideLifecycleControllerProvider,
-    );
+    final state = container.read(driverRideLifecycleControllerProvider);
 
     expect(state.status, RideStatus.driverEnRoute);
     expect(state.revision, 5);
@@ -73,18 +53,12 @@ void main() {
     );
 
     controller.applyAuthoritativeRide(
-      buildRide(
-        status: RideStatus.inProgress,
-        revision: 7,
-      ),
+      buildRide(status: RideStatus.inProgress, revision: 7),
     );
 
     expect(
       () => controller.applyAuthoritativeRide(
-        buildRide(
-          status: RideStatus.driverArrived,
-          revision: 8,
-        ),
+        buildRide(status: RideStatus.driverArrived, revision: 8),
       ),
       throwsA(isA<InvalidRideTransition>()),
     );

@@ -16,8 +16,6 @@ enum VehicleType {
       }
     }
 
-    throw FormatException(
-      'Unknown vehicle type: "$value".',
-    );
+    throw FormatException('Unknown vehicle type: "$value".');
   }
 }

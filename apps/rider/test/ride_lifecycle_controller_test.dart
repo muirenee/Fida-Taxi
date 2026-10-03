@@ -16,19 +16,10 @@ void main() {
       riderId: 'rider_001',
       assignedDriverId: driverId,
       status: status,
-      pickup: GeoPoint(
-        latitude: -1.9441,
-        longitude: 30.0619,
-      ),
-      dropoff: GeoPoint(
-        latitude: -1.9706,
-        longitude: 30.1044,
-      ),
+      pickup: GeoPoint(latitude: -1.9441, longitude: 30.0619),
+      dropoff: GeoPoint(latitude: -1.9706, longitude: 30.1044),
       vehicleType: VehicleType.standard,
-      quotedFare: Money(
-        minorUnits: 7000,
-        currency: 'RWF',
-      ),
+      quotedFare: Money(minorUnits: 7000, currency: 'RWF'),
       revision: revision,
       createdAt: timestamp,
       updatedAt: timestamp.add(Duration(seconds: revision)),
@@ -49,15 +40,10 @@ void main() {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
-    final controller = container.read(
-      rideLifecycleControllerProvider.notifier,
-    );
+    final controller = container.read(rideLifecycleControllerProvider.notifier);
 
     controller.applyAuthoritativeRide(
-      buildRide(
-        status: RideStatus.searching,
-        revision: 1,
-      ),
+      buildRide(status: RideStatus.searching, revision: 1),
     );
 
     final state = container.read(rideLifecycleControllerProvider);
@@ -70,22 +56,14 @@ void main() {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
-    final controller = container.read(
-      rideLifecycleControllerProvider.notifier,
+    final controller = container.read(rideLifecycleControllerProvider.notifier);
+
+    controller.applyAuthoritativeRide(
+      buildRide(status: RideStatus.searching, revision: 5),
     );
 
     controller.applyAuthoritativeRide(
-      buildRide(
-        status: RideStatus.searching,
-        revision: 5,
-      ),
-    );
-
-    controller.applyAuthoritativeRide(
-      buildRide(
-        status: RideStatus.quoting,
-        revision: 4,
-      ),
+      buildRide(status: RideStatus.quoting, revision: 4),
     );
 
     final state = container.read(rideLifecycleControllerProvider);
@@ -98,15 +76,10 @@ void main() {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
-    final controller = container.read(
-      rideLifecycleControllerProvider.notifier,
-    );
+    final controller = container.read(rideLifecycleControllerProvider.notifier);
 
     controller.applyAuthoritativeRide(
-      buildRide(
-        status: RideStatus.searching,
-        revision: 2,
-      ),
+      buildRide(status: RideStatus.searching, revision: 2),
     );
 
     controller.applyAuthoritativeRide(

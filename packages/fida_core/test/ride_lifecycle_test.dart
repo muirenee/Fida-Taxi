@@ -6,17 +6,11 @@ void main() {
 
   group('RideStatus', () {
     test('converts from wire value', () {
-      expect(
-        RideStatus.fromWire('driver_en_route'),
-        RideStatus.driverEnRoute,
-      );
+      expect(RideStatus.fromWire('driver_en_route'), RideStatus.driverEnRoute);
     });
 
     test('rejects unknown wire value', () {
-      expect(
-        () => RideStatus.fromWire('unknown'),
-        throwsFormatException,
-      );
+      expect(() => RideStatus.fromWire('unknown'), throwsFormatException);
     });
   });
 
@@ -33,10 +27,7 @@ void main() {
 
     test('rejects an impossible immediate transition', () {
       expect(
-        policy.canTransition(
-          from: RideStatus.draft,
-          to: RideStatus.paid,
-        ),
+        policy.canTransition(from: RideStatus.draft, to: RideStatus.paid),
         isFalse,
       );
     });
@@ -53,10 +44,7 @@ void main() {
 
     test('does not allow a paid ride to progress again', () {
       expect(
-        policy.canReach(
-          from: RideStatus.paid,
-          to: RideStatus.searching,
-        ),
+        policy.canReach(from: RideStatus.paid, to: RideStatus.searching),
         isFalse,
       );
     });

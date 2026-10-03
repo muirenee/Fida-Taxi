@@ -19,18 +19,16 @@ final class Ride {
     this.quotedFare,
     this.finalFare,
     this.route,
-  })  : id = _requiredIdentifier(id, 'id'),
-        riderId = _requiredIdentifier(riderId, 'riderId'),
-        assignedDriverId = assignedDriverId == null
-            ? null
-            : _requiredIdentifier(assignedDriverId, 'assignedDriverId'),
-        revision = _validRevision(revision),
-        createdAt = createdAt.toUtc(),
-        updatedAt = updatedAt.toUtc() {
+  }) : id = _requiredIdentifier(id, 'id'),
+       riderId = _requiredIdentifier(riderId, 'riderId'),
+       assignedDriverId = assignedDriverId == null
+           ? null
+           : _requiredIdentifier(assignedDriverId, 'assignedDriverId'),
+       revision = _validRevision(revision),
+       createdAt = createdAt.toUtc(),
+       updatedAt = updatedAt.toUtc() {
     if (this.updatedAt.isBefore(this.createdAt)) {
-      throw ArgumentError(
-        'updatedAt cannot be before createdAt.',
-      );
+      throw ArgumentError('updatedAt cannot be before createdAt.');
     }
 
     if (quotedFare != null &&
@@ -89,8 +87,7 @@ final class Ride {
       pickup: pickup ?? this.pickup,
       dropoff: dropoff ?? this.dropoff,
       vehicleType: vehicleType ?? this.vehicleType,
-      quotedFare:
-          clearQuotedFare ? null : quotedFare ?? this.quotedFare,
+      quotedFare: clearQuotedFare ? null : quotedFare ?? this.quotedFare,
       finalFare: clearFinalFare ? null : finalFare ?? this.finalFare,
       route: clearRoute ? null : route ?? this.route,
       revision: revision ?? this.revision,
@@ -129,49 +126,28 @@ final class Ride {
         json['assigned_driver_id'],
         'assigned_driver_id',
       ),
-      status: RideStatus.fromWire(
-        _requiredString(json['status'], 'status'),
-      ),
-      pickup: GeoPoint.fromJson(
-        _requiredMap(json['pickup'], 'pickup'),
-      ),
-      dropoff: GeoPoint.fromJson(
-        _requiredMap(json['dropoff'], 'dropoff'),
-      ),
+      status: RideStatus.fromWire(_requiredString(json['status'], 'status')),
+      pickup: GeoPoint.fromJson(_requiredMap(json['pickup'], 'pickup')),
+      dropoff: GeoPoint.fromJson(_requiredMap(json['dropoff'], 'dropoff')),
       vehicleType: VehicleType.fromWire(
         _requiredString(json['vehicle_type'], 'vehicle_type'),
       ),
       quotedFare: quotedFareValue == null
           ? null
-          : Money.fromJson(
-              _requiredMap(quotedFareValue, 'quoted_fare'),
-            ),
+          : Money.fromJson(_requiredMap(quotedFareValue, 'quoted_fare')),
       finalFare: finalFareValue == null
           ? null
-          : Money.fromJson(
-              _requiredMap(finalFareValue, 'final_fare'),
-            ),
+          : Money.fromJson(_requiredMap(finalFareValue, 'final_fare')),
       route: routeValue == null
           ? null
-          : RouteSummary.fromJson(
-              _requiredMap(routeValue, 'route'),
-            ),
+          : RouteSummary.fromJson(_requiredMap(routeValue, 'route')),
       revision: _requiredInt(json['revision'], 'revision'),
-      createdAt: _requiredDateTime(
-        json['created_at'],
-        'created_at',
-      ),
-      updatedAt: _requiredDateTime(
-        json['updated_at'],
-        'updated_at',
-      ),
+      createdAt: _requiredDateTime(json['created_at'], 'created_at'),
+      updatedAt: _requiredDateTime(json['updated_at'], 'updated_at'),
     );
   }
 
-  static String _requiredIdentifier(
-    String value,
-    String fieldName,
-  ) {
+  static String _requiredIdentifier(String value, String fieldName) {
     final normalized = value.trim();
 
     if (normalized.isEmpty) {
@@ -197,78 +173,51 @@ final class Ride {
     return value;
   }
 
-  static String _requiredString(
-    Object? value,
-    String fieldName,
-  ) {
+  static String _requiredString(Object? value, String fieldName) {
     if (value is! String || value.trim().isEmpty) {
-      throw FormatException(
-        '$fieldName must be a non-empty string.',
-      );
+      throw FormatException('$fieldName must be a non-empty string.');
     }
 
     return value;
   }
 
-  static String? _optionalString(
-    Object? value,
-    String fieldName,
-  ) {
+  static String? _optionalString(Object? value, String fieldName) {
     if (value == null) {
       return null;
     }
 
     if (value is! String || value.trim().isEmpty) {
-      throw FormatException(
-        '$fieldName must be a non-empty string or null.',
-      );
+      throw FormatException('$fieldName must be a non-empty string or null.');
     }
 
     return value;
   }
 
-  static int _requiredInt(
-    Object? value,
-    String fieldName,
-  ) {
+  static int _requiredInt(Object? value, String fieldName) {
     if (value is! num) {
-      throw FormatException(
-        '$fieldName must be numeric.',
-      );
+      throw FormatException('$fieldName must be numeric.');
     }
 
     return value.toInt();
   }
 
-  static Map<String, dynamic> _requiredMap(
-    Object? value,
-    String fieldName,
-  ) {
+  static Map<String, dynamic> _requiredMap(Object? value, String fieldName) {
     if (value is! Map<Object?, Object?>) {
-      throw FormatException(
-        '$fieldName must be an object.',
-      );
+      throw FormatException('$fieldName must be an object.');
     }
 
     return Map<String, dynamic>.from(value);
   }
 
-  static DateTime _requiredDateTime(
-    Object? value,
-    String fieldName,
-  ) {
+  static DateTime _requiredDateTime(Object? value, String fieldName) {
     if (value is! String) {
-      throw FormatException(
-        '$fieldName must be an ISO-8601 string.',
-      );
+      throw FormatException('$fieldName must be an ISO-8601 string.');
     }
 
     final parsed = DateTime.tryParse(value);
 
     if (parsed == null) {
-      throw FormatException(
-        '$fieldName is not a valid ISO-8601 date.',
-      );
+      throw FormatException('$fieldName is not a valid ISO-8601 date.');
     }
 
     return parsed.toUtc();
@@ -295,20 +244,20 @@ final class Ride {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        riderId,
-        assignedDriverId,
-        status,
-        pickup,
-        dropoff,
-        vehicleType,
-        quotedFare,
-        finalFare,
-        route,
-        revision,
-        createdAt,
-        updatedAt,
-      );
+    id,
+    riderId,
+    assignedDriverId,
+    status,
+    pickup,
+    dropoff,
+    vehicleType,
+    quotedFare,
+    finalFare,
+    route,
+    revision,
+    createdAt,
+    updatedAt,
+  );
 
   @override
   String toString() {

@@ -28,9 +28,7 @@ enum RideStatus {
       }
     }
 
-    throw FormatException(
-      'Unknown ride status: "$value".',
-    );
+    throw FormatException('Unknown ride status: "$value".');
   }
 
   bool get isTerminal {
@@ -84,15 +82,9 @@ enum RideStatus {
 }
 
 abstract interface class RideTransitionPolicy {
-  bool canTransition({
-    required RideStatus from,
-    required RideStatus to,
-  });
+  bool canTransition({required RideStatus from, required RideStatus to});
 
-  bool canReach({
-    required RideStatus from,
-    required RideStatus to,
-  });
+  bool canReach({required RideStatus from, required RideStatus to});
 
   void ensureTransitionAllowed({
     required RideStatus from,
@@ -105,64 +97,55 @@ final class StandardRideTransitionPolicy implements RideTransitionPolicy {
 
   static const Map<RideStatus, Set<RideStatus>> _allowedTransitions =
       <RideStatus, Set<RideStatus>>{
-    RideStatus.draft: <RideStatus>{
-      RideStatus.quoting,
-      RideStatus.cancelledByRider,
-    },
-    RideStatus.quoting: <RideStatus>{
-      RideStatus.searching,
-      RideStatus.cancelledByRider,
-    },
-    RideStatus.searching: <RideStatus>{
-      RideStatus.driverOffered,
-      RideStatus.noDriverFound,
-      RideStatus.cancelledByRider,
-    },
-    RideStatus.driverOffered: <RideStatus>{
-      RideStatus.searching,
-      RideStatus.driverAssigned,
-      RideStatus.noDriverFound,
-      RideStatus.cancelledByRider,
-    },
-    RideStatus.driverAssigned: <RideStatus>{
-      RideStatus.driverEnRoute,
-      RideStatus.cancelledByRider,
-      RideStatus.cancelledByDriver,
-    },
-    RideStatus.driverEnRoute: <RideStatus>{
-      RideStatus.driverArrived,
-      RideStatus.cancelledByRider,
-      RideStatus.cancelledByDriver,
-    },
-    RideStatus.driverArrived: <RideStatus>{
-      RideStatus.inProgress,
-      RideStatus.cancelledByRider,
-      RideStatus.cancelledByDriver,
-    },
-    RideStatus.inProgress: <RideStatus>{
-      RideStatus.completed,
-    },
-    RideStatus.completed: <RideStatus>{
-      RideStatus.paymentPending,
-    },
-    RideStatus.paymentPending: <RideStatus>{
-      RideStatus.paid,
-      RideStatus.paymentFailed,
-    },
-    RideStatus.paymentFailed: <RideStatus>{
-      RideStatus.paymentPending,
-    },
-    RideStatus.paid: <RideStatus>{},
-    RideStatus.cancelledByRider: <RideStatus>{},
-    RideStatus.cancelledByDriver: <RideStatus>{},
-    RideStatus.noDriverFound: <RideStatus>{},
-  };
+        RideStatus.draft: <RideStatus>{
+          RideStatus.quoting,
+          RideStatus.cancelledByRider,
+        },
+        RideStatus.quoting: <RideStatus>{
+          RideStatus.searching,
+          RideStatus.cancelledByRider,
+        },
+        RideStatus.searching: <RideStatus>{
+          RideStatus.driverOffered,
+          RideStatus.noDriverFound,
+          RideStatus.cancelledByRider,
+        },
+        RideStatus.driverOffered: <RideStatus>{
+          RideStatus.searching,
+          RideStatus.driverAssigned,
+          RideStatus.noDriverFound,
+          RideStatus.cancelledByRider,
+        },
+        RideStatus.driverAssigned: <RideStatus>{
+          RideStatus.driverEnRoute,
+          RideStatus.cancelledByRider,
+          RideStatus.cancelledByDriver,
+        },
+        RideStatus.driverEnRoute: <RideStatus>{
+          RideStatus.driverArrived,
+          RideStatus.cancelledByRider,
+          RideStatus.cancelledByDriver,
+        },
+        RideStatus.driverArrived: <RideStatus>{
+          RideStatus.inProgress,
+          RideStatus.cancelledByRider,
+          RideStatus.cancelledByDriver,
+        },
+        RideStatus.inProgress: <RideStatus>{RideStatus.completed},
+        RideStatus.completed: <RideStatus>{RideStatus.paymentPending},
+        RideStatus.paymentPending: <RideStatus>{
+          RideStatus.paid,
+          RideStatus.paymentFailed,
+        },
+        RideStatus.paymentFailed: <RideStatus>{RideStatus.paymentPending},
+        RideStatus.paid: <RideStatus>{},
+        RideStatus.cancelledByRider: <RideStatus>{},
+        RideStatus.cancelledByDriver: <RideStatus>{},
+        RideStatus.noDriverFound: <RideStatus>{},
+      };
 
   @override
-  bool canTransition({
-    required RideStatus from,
-    required RideStatus to,
-  }) {
+  bool canTransition({required RideStatus from, required RideStatus to}) {
     if (from == to) {
       return true;
     }
@@ -171,10 +154,7 @@ final class StandardRideTransitionPolicy implements RideTransitionPolicy {
   }
 
   @override
-  bool canReach({
-    required RideStatus from,
-    required RideStatus to,
-  }) {
+  bool canReach({required RideStatus from, required RideStatus to}) {
     if (from == to) {
       return true;
     }
@@ -189,8 +169,7 @@ final class StandardRideTransitionPolicy implements RideTransitionPolicy {
         continue;
       }
 
-      final nextStates =
-          _allowedTransitions[current] ?? const <RideStatus>{};
+      final nextStates = _allowedTransitions[current] ?? const <RideStatus>{};
 
       for (final next in nextStates) {
         if (next == to) {
@@ -212,19 +191,13 @@ final class StandardRideTransitionPolicy implements RideTransitionPolicy {
     required RideStatus to,
   }) {
     if (!canTransition(from: from, to: to)) {
-      throw InvalidRideTransition(
-        from: from,
-        to: to,
-      );
+      throw InvalidRideTransition(from: from, to: to);
     }
   }
 }
 
 final class InvalidRideTransition implements Exception {
-  const InvalidRideTransition({
-    required this.from,
-    required this.to,
-  });
+  const InvalidRideTransition({required this.from, required this.to});
 
   final RideStatus from;
   final RideStatus to;

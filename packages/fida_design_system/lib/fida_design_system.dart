@@ -41,16 +41,17 @@ abstract final class FidaTheme {
     final surface = isDark ? FidaColors.surfaceDark : FidaColors.white;
     final foreground = isDark ? FidaColors.white : FidaColors.black;
 
-    final scheme = ColorScheme.fromSeed(
-      seedColor: FidaColors.black,
-      brightness: brightness,
-    ).copyWith(
-      primary: primary,
-      onPrimary: onPrimary,
-      surface: surface,
-      onSurface: foreground,
-      error: FidaColors.danger,
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: FidaColors.black,
+          brightness: brightness,
+        ).copyWith(
+          primary: primary,
+          onPrimary: onPrimary,
+          surface: surface,
+          onSurface: foreground,
+          error: FidaColors.danger,
+        );
 
     final base = ThemeData(
       useMaterial3: true,
@@ -95,10 +96,7 @@ abstract final class FidaTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(FidaRadius.md),
           ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -114,10 +112,7 @@ abstract final class FidaTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(FidaRadius.md),
-          borderSide: BorderSide(
-            color: foreground,
-            width: 1.5,
-          ),
+          borderSide: BorderSide(color: foreground, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: FidaSpacing.md,
