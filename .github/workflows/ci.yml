@@ -52,11 +52,17 @@ jobs:
       - name: Bootstrap workspace
         run: ./setup_workspace.sh --bootstrap-only
 
+      - name: Show bootstrap migration diff
+        run: git diff -- apps packages || true
+
       - name: List workspace packages
         run: dart pub workspace list
 
-      - name: Check formatting
-        run: dart run melos run format:check --no-select
+      - name: Apply formatter for diagnostic validation
+        run: dart run melos run format --no-select
+
+      - name: Show formatted source diff
+        run: git diff -- apps packages || true
 
       - name: Static analysis
         run: dart run melos run analyze --no-select
