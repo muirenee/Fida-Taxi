@@ -74,6 +74,32 @@ jobs:
         working-directory: apps/rider
         run: flutter build apk --debug --no-pub
 
+      - name: Stage Rider APK
+        run: |
+          mkdir -p dist
+          cp apps/rider/build/app/outputs/flutter-apk/app-debug.apk dist/fida-taxi-rider-debug.apk
+
+      - name: Upload Rider APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: fida-taxi-rider-debug
+          path: dist/fida-taxi-rider-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Build Driver Android debug APK
         working-directory: apps/driver
         run: flutter build apk --debug --no-pub
+
+      - name: Stage Driver APK
+        run: |
+          mkdir -p dist
+          cp apps/driver/build/app/outputs/flutter-apk/app-debug.apk dist/fida-taxi-driver-debug.apk
+
+      - name: Upload Driver APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: fida-taxi-driver-debug
+          path: dist/fida-taxi-driver-debug.apk
+          if-no-files-found: error
+          retention-days: 14
