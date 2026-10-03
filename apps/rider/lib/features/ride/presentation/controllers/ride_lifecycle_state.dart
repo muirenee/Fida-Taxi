@@ -56,8 +56,7 @@ final class RideLifecycleState {
 
   @override
   String toString() {
-    return 'RideLifecycleState(rideId: $rideId, status: ' +
-        status.wireValue +
-        ', revision: $revision, isSynchronizing: $isSynchronizing)';
+    return 'RideLifecycleState(rideId: $rideId, status: ${status.wireValue}, '
+        'revision: $revision, isSynchronizing: $isSynchronizing)';
   }
 }

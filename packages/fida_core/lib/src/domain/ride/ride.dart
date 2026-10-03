@@ -313,8 +313,6 @@ final class Ride {
   @override
   String toString() {
     return 'Ride(id: $id, riderId: $riderId, driverId: $assignedDriverId, '
-        'status: ' +
-        status.wireValue +
-        ', revision: $revision)';
+        'status: ${status.wireValue}, revision: $revision)';
   }
 }

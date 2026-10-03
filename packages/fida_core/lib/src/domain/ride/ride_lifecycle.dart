@@ -231,10 +231,6 @@ final class InvalidRideTransition implements Exception {
 
   @override
   String toString() {
-    return 'InvalidRideTransition(' +
-        from.wireValue +
-        ' -> ' +
-        to.wireValue +
-        ')';
+    return 'InvalidRideTransition(${from.wireValue} -> ${to.wireValue})';
   }
 }

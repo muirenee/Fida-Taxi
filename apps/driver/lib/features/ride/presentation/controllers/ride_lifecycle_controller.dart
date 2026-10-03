@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'ride_lifecycle_state.dart';
 
-final driverDriverRideLifecycleControllerProvider =
+final driverRideLifecycleControllerProvider =
     NotifierProvider<DriverRideLifecycleController, RideLifecycleState>(
   DriverRideLifecycleController.new,
 );

@@ -60,7 +60,7 @@ final class Money implements Comparable<Money> {
   void _ensureSameCurrency(Money other) {
     if (currency != other.currency) {
       throw ArgumentError(
-        'Cannot operate on $currency and ' + other.currency + '.',
+        'Cannot operate on $currency and ${other.currency}.',
       );
     }
   }

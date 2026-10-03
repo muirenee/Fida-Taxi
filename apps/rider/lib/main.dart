@@ -56,18 +56,18 @@ class RideFoundationScreen extends ConsumerWidget {
               ),
               const SizedBox(height: FidaSpacing.md),
               Text(
-                'Status: ' + lifecycle.status.wireValue,
+                'Status: ${lifecycle.status.wireValue}',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: FidaSpacing.xs),
               Text(
                 lifecycle.hasServerRide
-                    ? 'Ride: ' + lifecycle.rideId!
+                    ? 'Ride: ${lifecycle.rideId}'
                     : 'No active server ride.',
               ),
               const SizedBox(height: FidaSpacing.xs),
               Text(
-                'Revision: ' + lifecycle.revision.toString(),
+                'Revision: ${lifecycle.revision}',
               ),
               if (lifecycle.isSynchronizing) ...<Widget>[
                 const SizedBox(height: FidaSpacing.lg),
