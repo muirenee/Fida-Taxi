@@ -69,9 +69,7 @@ final class FidaCoreApi {
     required RideRequest request,
     Map<String, String> attestationHeaders = const <String, String>{},
   }) async {
-    if (session.role != AuthRole.rider) {
-      throw ArgumentError('A rider session is required to request a ride.');
-    }
+    _requireRole(session, AuthRole.rider);
 
     final json = await _post(
       'rides/request',
@@ -83,15 +81,112 @@ final class FidaCoreApi {
     return RideRequestResult.fromJson(json);
   }
 
+  Future<RideSnapshot?> getActiveRiderTrip(AuthSession session) async {
+    _requireRole(session, AuthRole.rider);
+    final json = await _get(
+      'rides/rider/active',
+      accessToken: session.accessToken,
+    );
+    return _optionalTrip(json['trip']);
+  }
+
+  Future<RideSnapshot> getTrip({
+    required AuthSession session,
+    required String tripId,
+  }) async {
+    final json = await _get(
+      'rides/${Uri.encodeComponent(tripId)}',
+      accessToken: session.accessToken,
+    );
+    return RideSnapshot.fromJson(json);
+  }
+
+  Future<RideSnapshot> cancelTrip({
+    required AuthSession session,
+    required String tripId,
+    String? reason,
+  }) async {
+    final json = await _post(
+      'rides/${Uri.encodeComponent(tripId)}/cancel',
+      body: <String, dynamic>{
+        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+      },
+      accessToken: session.accessToken,
+    );
+    return RideSnapshot.fromJson(json);
+  }
+
+  Future<DriverAvailabilityState> setDriverAvailability({
+    required AuthSession session,
+    required bool isAvailable,
+    double? latitude,
+    double? longitude,
+  }) async {
+    _requireRole(session, AuthRole.driver);
+
+    final body = <String, dynamic>{'is_available': isAvailable};
+    if (latitude != null) body['latitude'] = latitude;
+    if (longitude != null) body['longitude'] = longitude;
+
+    final json = await _post(
+      'rides/driver/availability',
+      body: body,
+      accessToken: session.accessToken,
+    );
+
+    return DriverAvailabilityState.fromJson(json);
+  }
+
+  Future<RideOfferBatch> getDriverOffers(AuthSession session) async {
+    _requireRole(session, AuthRole.driver);
+    final json = await _get(
+      'rides/driver/offers',
+      accessToken: session.accessToken,
+    );
+    return RideOfferBatch.fromJson(json);
+  }
+
+  Future<RideSnapshot?> getActiveDriverTrip(AuthSession session) async {
+    _requireRole(session, AuthRole.driver);
+    final json = await _get(
+      'rides/driver/active',
+      accessToken: session.accessToken,
+    );
+    return _optionalTrip(json['trip']);
+  }
+
+  Future<RideSnapshot> acceptTrip({
+    required AuthSession session,
+    required String tripId,
+  }) async {
+    _requireRole(session, AuthRole.driver);
+    final json = await _post(
+      'rides/${Uri.encodeComponent(tripId)}/accept',
+      body: const <String, dynamic>{},
+      accessToken: session.accessToken,
+    );
+    return RideSnapshot.fromJson(json);
+  }
+
+  Future<RideSnapshot> applyDriverAction({
+    required AuthSession session,
+    required String tripId,
+    required DriverTripAction action,
+  }) async {
+    _requireRole(session, AuthRole.driver);
+    final json = await _post(
+      'rides/${Uri.encodeComponent(tripId)}/action',
+      body: <String, dynamic>{'action': action.wireValue},
+      accessToken: session.accessToken,
+    );
+    return RideSnapshot.fromJson(json);
+  }
+
   Future<TelemetrySession> createTelemetrySession({
     required AuthSession session,
     Map<String, String> attestationHeaders = const <String, String>{},
   }) async {
-    if (session.role != AuthRole.driver || session.driverId == null) {
-      throw ArgumentError(
-        'A driver session is required to create a telemetry session.',
-      );
-    }
+    _requireRole(session, AuthRole.driver);
 
     final json = await _post(
       'auth/telemetry-session',
@@ -105,6 +200,47 @@ final class FidaCoreApi {
 
   void close() {
     _client.close();
+  }
+
+  void _requireRole(AuthSession session, AuthRole role) {
+    if (session.role != role) {
+      throw ArgumentError('A ${role.wireValue} session is required.');
+    }
+  }
+
+  RideSnapshot? _optionalTrip(Object? value) {
+    if (value == null) return null;
+    if (value is! Map<Object?, Object?>) {
+      throw const FormatException('trip must be an object or null.');
+    }
+    return RideSnapshot.fromJson(Map<String, dynamic>.from(value));
+  }
+
+  Future<Map<String, dynamic>> _get(
+    String path, {
+    String? accessToken,
+    Map<String, String> extraHeaders = const <String, String>{},
+  }) async {
+    final headers = <String, String>{
+      'accept': 'application/json',
+      ...extraHeaders,
+      if (accessToken != null) 'authorization': 'Bearer $accessToken',
+    };
+
+    late final http.Response response;
+    try {
+      response = await _client.get(
+        configuration.endpoint(path),
+        headers: headers,
+      );
+    } on http.ClientException catch (error) {
+      throw FidaApiException(
+        message: 'Unable to reach the Fida Ride API.',
+        details: error.message,
+      );
+    }
+
+    return _decodeResponse(response);
   }
 
   Future<Map<String, dynamic>> _post(
@@ -134,6 +270,10 @@ final class FidaCoreApi {
       );
     }
 
+    return _decodeResponse(response);
+  }
+
+  Map<String, dynamic> _decodeResponse(http.Response response) {
     final decoded = _decodeObject(response.body);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {

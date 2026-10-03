@@ -10,6 +10,7 @@ typedef AuthenticatedBuilder =
     Widget Function(
       BuildContext context,
       AuthSession session,
+      FidaCoreApi api,
       VoidCallback signOut,
     );
 
@@ -219,8 +220,9 @@ final class _PhoneAuthGateState extends State<PhoneAuthGate> {
   @override
   Widget build(BuildContext context) {
     final session = _session;
-    if (session != null) {
-      return widget.authenticatedBuilder(context, session, _signOut);
+    final api = _api;
+    if (session != null && api != null) {
+      return widget.authenticatedBuilder(context, session, api, _signOut);
     }
 
     final isDriver = widget.expectedRole == AuthRole.driver;
