@@ -14,7 +14,7 @@ void main() {
       status: status,
       pickup: GeoPoint(latitude: -1.9441, longitude: 30.0619),
       dropoff: GeoPoint(latitude: -1.9706, longitude: 30.1044),
-      vehicleType: VehicleType.standard,
+      vehicleType: VehicleType.taxi,
       quotedFare: Money(minorUnits: 7000, currency: 'RWF'),
       revision: revision,
       createdAt: timestamp,
