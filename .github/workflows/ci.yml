@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: fida-taxi-ci-${{ github.workflow }}-${{ github.ref }}
@@ -52,22 +52,14 @@ jobs:
       - name: Bootstrap workspace
         run: ./setup_workspace.sh --bootstrap-only
 
+      - name: Verify reproducible bootstrap
+        run: git diff --exit-code -- apps packages pubspec.lock
+
       - name: List workspace packages
         run: dart pub workspace list
 
-      - name: Normalize Dart formatting
-        run: dart run melos run format --no-select
-
-      - name: Commit generated Flutter shells and normalized sources
-        if: github.ref == 'refs/heads/modernization/foundation'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps packages pubspec.lock
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: normalize Flutter workspace"
-            git push origin HEAD:"$GITHUB_REF_NAME"
-          fi
+      - name: Check formatting
+        run: dart run melos run format:check --no-select
 
       - name: Static analysis
         run: dart run melos run analyze --no-select
