@@ -19,7 +19,7 @@ usage() {
 Usage: ./deploy/backend.sh <command>
 
 Commands:
-  init      Create Fida-Taxi .env with independent secrets.
+  init      Create/repair Fida-Taxi .env with independent secrets.
   config    Validate the Fida-Taxi Docker Compose configuration.
   up        Start the isolated Fida-Taxi backend stack.
   restart   Restart Fida-Taxi API and telemetry services.
@@ -35,6 +35,11 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "Required command not found: $1"
 }
 
+legacy_env_file() {
+  [[ -f "$ENV_FILE" ]] || return 1
+  grep -Eq '^(FIDA_BACKEND_(REPOSITORY|REF|LOCAL_DIR|ENV_FILE)=|POSTGRES_DB=fida_ride$|POSTGRES_USER=fida_ride$|POSTGRES_PORT=5432$|REDIS_PORT=6379$|NESTJS_CORE_PORT=3000$|GO_TELEMETRY_PORT=8080$)' "$ENV_FILE"
+}
+
 load_env() {
   if [[ -f "$ENV_FILE" ]]; then
     set -a
@@ -45,14 +50,24 @@ load_env() {
 
   POSTGRES_DB="${POSTGRES_DB:-fida_taxi}"
   POSTGRES_USER="${POSTGRES_USER:-fida_taxi}"
+  POSTGRES_PORT="${POSTGRES_PORT:-55432}"
+  REDIS_PORT="${REDIS_PORT:-56379}"
   NESTJS_CORE_PORT="${NESTJS_CORE_PORT:-3100}"
   GO_TELEMETRY_PORT="${GO_TELEMETRY_PORT:-8180}"
   SERVICE_BIND_IP="${SERVICE_BIND_IP:-127.0.0.1}"
 }
 
+assert_isolated_env() {
+  legacy_env_file && fail "Legacy Fida-Ride-coupled settings detected in $ENV_FILE. Run ./deploy/backend.sh init to back them up and create an isolated Fida-Taxi environment."
+
+  [[ "$POSTGRES_DB" != 'fida_ride' ]] || fail 'POSTGRES_DB must not be fida_ride.'
+  [[ "$POSTGRES_USER" != 'fida_ride' ]] || fail 'POSTGRES_USER must not be fida_ride.'
+}
+
 require_env_file() {
   [[ -f "$ENV_FILE" ]] || fail "Missing $ENV_FILE. Run ./deploy/backend.sh init first."
   load_env
+  assert_isolated_env
 
   local required=(POSTGRES_PASSWORD REDIS_PASSWORD JWT_HS256_SECRET OTP_HMAC_SECRET)
   local key
@@ -67,13 +82,7 @@ replace_env_value() {
   sed -i "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
 }
 
-init_env() {
-  require_command openssl
-  if [[ -f "$ENV_FILE" ]]; then
-    log "$ENV_FILE already exists; leaving it unchanged."
-    return 0
-  fi
-
+create_isolated_env() {
   umask 077
   cp "$ROOT_DIR/.env.example" "$ENV_FILE"
   replace_env_value POSTGRES_PASSWORD "$(openssl rand -hex 32)"
@@ -82,6 +91,28 @@ init_env() {
   replace_env_value OTP_HMAC_SECRET "$(openssl rand -hex 32)"
   chmod 600 "$ENV_FILE"
   log "Created isolated Fida-Taxi environment at $ENV_FILE."
+}
+
+init_env() {
+  require_command openssl
+
+  if [[ -f "$ENV_FILE" ]]; then
+    if legacy_env_file; then
+      local backup
+      backup="${ENV_FILE}.pre-isolation-$(date -u +%Y%m%dT%H%M%SZ)"
+      mv "$ENV_FILE" "$backup"
+      log "Backed up legacy coupled environment to $backup."
+      create_isolated_env
+      return 0
+    fi
+
+    load_env
+    assert_isolated_env
+    log "$ENV_FILE is already an isolated Fida-Taxi environment; leaving it unchanged."
+    return 0
+  fi
+
+  create_isolated_env
 }
 
 compose() {
@@ -104,7 +135,7 @@ start_stack() {
 
 health() {
   require_command curl
-  load_env
+  require_env_file
 
   local health_host="$SERVICE_BIND_IP"
   if [[ "$health_host" == '0.0.0.0' || "$health_host" == '::' ]]; then
@@ -127,7 +158,24 @@ health() {
 }
 
 doctor() {
-  load_env
+  if [[ -f "$ENV_FILE" ]]; then
+    load_env
+    if legacy_env_file; then
+      cat <<EOF
+Fida-Taxi project root: $ROOT_DIR
+Environment file: $ENV_FILE
+Isolation status: LEGACY COUPLED SETTINGS DETECTED
+
+Run: ./deploy/backend.sh init
+The old file will be backed up and replaced with an isolated Fida-Taxi environment.
+EOF
+      return 2
+    fi
+    assert_isolated_env
+  else
+    load_env
+  fi
+
   cat <<EOF
 Fida-Taxi project root: $ROOT_DIR
 Compose project: fida-taxi
@@ -139,10 +187,13 @@ API container: fida-taxi-api
 Telemetry container: fida-taxi-telemetry
 PostgreSQL data volume: fida-taxi-postgres-data
 Redis data volume: fida-taxi-redis-data
-API port: ${NESTJS_CORE_PORT}
-Telemetry port: ${GO_TELEMETRY_PORT}
+PostgreSQL host port: ${POSTGRES_PORT}
+Redis host port: ${REDIS_PORT}
+API host port: ${NESTJS_CORE_PORT}
+Telemetry host port: ${GO_TELEMETRY_PORT}
+Isolation status: OK
 
-Fida-Ride containers are intentionally not referenced or managed by this script.
+Fida-Ride containers, volumes, environment files, and repositories are not referenced or managed by this script.
 EOF
 }
 
@@ -156,7 +207,7 @@ main() {
     up) start_stack ;;
     restart) compose restart api telemetry ;;
     status) compose ps ;;
-    health) require_env_file; health ;;
+    health) health ;;
     logs) compose logs -f --tail=200 "$@" ;;
     down) compose down ;;
     doctor) doctor ;;
