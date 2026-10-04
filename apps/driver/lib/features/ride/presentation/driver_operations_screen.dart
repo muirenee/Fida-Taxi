@@ -131,10 +131,7 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
     await subscription?.cancel();
   }
 
-  Future<void> _publishLocation(
-    GeoPoint point, {
-    bool silent = false,
-  }) async {
+  Future<void> _publishLocation(GeoPoint point, {bool silent = false}) async {
     try {
       await widget.api.updateDriverLocation(
         session: widget.session,
