@@ -108,7 +108,10 @@ jobs:
         run: dart pub workspace list
 
       - name: Check formatting
-        run: dart run melos run format:check --no-select
+        run: |
+          dart format apps packages
+          git diff -- packages/fida_app_auth/lib/src/phone_auth_gate.dart
+          git diff --exit-code -- apps packages
 
       - name: Static analysis
         run: dart run melos run analyze --no-select
