@@ -9,6 +9,7 @@ import { MapsService } from './maps/maps.service';
 import { RedisService } from './redis.service';
 import { RidesController } from './rides/rides.controller';
 import { RidesService } from './rides/rides.service';
+import { TrackingService } from './rides/tracking.service';
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true })],
@@ -23,6 +24,7 @@ import { RidesService } from './rides/rides.service';
     RedisService,
     AuthService,
     RidesService,
+    TrackingService,
     MapsService,
   ],
 })
