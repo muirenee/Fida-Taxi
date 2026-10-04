@@ -235,7 +235,7 @@ final class FidaCoreApi {
       );
     } on http.ClientException catch (error) {
       throw FidaApiException(
-        message: 'Unable to reach the Fida Ride API.',
+        message: 'Unable to reach the Fida Taxi API.',
         details: error.message,
       );
     }
@@ -265,7 +265,7 @@ final class FidaCoreApi {
       );
     } on http.ClientException catch (error) {
       throw FidaApiException(
-        message: 'Unable to reach the Fida Ride API.',
+        message: 'Unable to reach the Fida Taxi API.',
         details: error.message,
       );
     }
@@ -298,14 +298,14 @@ final class FidaCoreApi {
       decoded = jsonDecode(body);
     } on FormatException catch (error) {
       throw FidaApiException(
-        message: 'Fida Ride API returned invalid JSON.',
+        message: 'Fida Taxi API returned invalid JSON.',
         details: error.message,
       );
     }
 
     if (decoded is! Map<Object?, Object?>) {
       throw const FidaApiException(
-        message: 'Fida Ride API returned an unexpected response shape.',
+        message: 'Fida Taxi API returned an unexpected response shape.',
       );
     }
 
@@ -323,6 +323,6 @@ final class FidaCoreApi {
       return message.whereType<String>().join('; ');
     }
 
-    return 'Fida Ride API request failed.';
+    return 'Fida Taxi API request failed.';
   }
 }

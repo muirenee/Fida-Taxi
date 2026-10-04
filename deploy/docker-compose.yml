@@ -1,0 +1,125 @@
+name: fida-taxi
+
+services:
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: fida-taxi-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fida_taxi}
+      POSTGRES_USER: ${POSTGRES_USER:-fida_taxi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    ports:
+      - "${DATA_BIND_IP:-127.0.0.1}:${POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - fida-taxi-postgres-data:/var/lib/postgresql/data
+      - ../services/backend/sql/001-init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - fida-taxi-network
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: fida-taxi-redis
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+    command:
+      - /bin/sh
+      - -c
+      - exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"
+    ports:
+      - "${DATA_BIND_IP:-127.0.0.1}:${REDIS_PORT:-56379}:6379"
+    volumes:
+      - fida-taxi-redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - fida-taxi-network
+
+  api:
+    build:
+      context: ../services/backend
+      dockerfile: Dockerfile
+    image: fida-taxi/api:local
+    container_name: fida-taxi-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-fida_taxi}
+      DB_USER: ${POSTGRES_USER:-fida_taxi}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      JWT_HS256_SECRET: ${JWT_HS256_SECRET:?JWT_HS256_SECRET must be set}
+      JWT_ACCESS_TTL_SECONDS: ${JWT_ACCESS_TTL_SECONDS:-900}
+      OTP_HMAC_SECRET: ${OTP_HMAC_SECRET:?OTP_HMAC_SECRET must be set}
+      OTP_TTL_SECONDS: ${OTP_TTL_SECONDS:-300}
+      OTP_DEV_ECHO: ${OTP_DEV_ECHO:-true}
+      RIDE_BASE_FARE_RWF: ${RIDE_BASE_FARE_RWF:-1000}
+      RIDE_PER_KM_RWF: ${RIDE_PER_KM_RWF:-500}
+      DISPATCH_RADIUS_KM: ${DISPATCH_RADIUS_KM:-5}
+      BIDDING_TTL_SECONDS: ${BIDDING_TTL_SECONDS:-120}
+    ports:
+      - "${SERVICE_BIND_IP:-127.0.0.1}:${NESTJS_CORE_PORT:-3100}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/api/v1/healthz | grep -q '\"status\":\"ok\"'"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    networks:
+      - fida-taxi-network
+
+  telemetry:
+    build:
+      context: ../services/telemetry
+      dockerfile: Dockerfile
+    image: fida-taxi/telemetry:local
+    container_name: fida-taxi-telemetry
+    restart: unless-stopped
+    environment:
+      HTTP_ADDR: ":8080"
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      JWT_HS256_SECRET: ${JWT_HS256_SECRET:?JWT_HS256_SECRET must be set}
+    ports:
+      - "${SERVICE_BIND_IP:-127.0.0.1}:${GO_TELEMETRY_PORT:-8180}:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    networks:
+      - fida-taxi-network
+
+volumes:
+  fida-taxi-postgres-data:
+    name: fida-taxi-postgres-data
+  fida-taxi-redis-data:
+    name: fida-taxi-redis-data
+
+networks:
+  fida-taxi-network:
+    name: fida-taxi-network
+    driver: bridge

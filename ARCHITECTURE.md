@@ -2,30 +2,44 @@
 
 1. Mobile clients are not authoritative for ride lifecycle, dispatch, fare settlement, payments, or driver earnings.
 2. The shared `fida_core` package is pure Dart and has no Flutter, Firebase, HTTP, map SDK, database, or Riverpod dependencies.
-3. Rider and Driver apps consume authoritative ride revisions from the backend and ignore stale events.
+3. Rider and Driver apps consume authoritative ride revisions from the Fida-Taxi backend and ignore stale events.
 4. Secrets and service-account credentials never ship in client applications.
 5. Realtime transport is an implementation detail behind application/domain boundaries.
-6. CI must pass formatting, static analysis, unit tests, Flutter tests, and Android debug compilation before foundation changes are merged.
+6. CI must pass backend type checking/builds, formatting, static analysis, unit tests, Flutter tests, and Android debug compilation before changes are merged.
+7. Fida-Taxi and Fida-Ride are separate projects and must never share databases, Redis state, container names, secrets, volumes, or deployment lifecycle.
 
 ## Repository boundaries
 
-- `muirenee/Fida-Taxi` owns the Rider and Driver mobile applications, the pure Dart domain model, transport clients, and the shared design system.
-- `muirenee/Fida-Ride` owns the backend platform: NestJS business API, PostgreSQL/PostGIS, Redis, dispatch/bidding, finance, fraud controls, and the Go telemetry service.
-- Backend functionality must not be duplicated in the mobile repository. Mobile code talks to the backend through `packages/fida_api`.
-- `fida_core` remains transport-agnostic. Backend-specific field names and legacy backend trip states are translated inside `fida_api`, not inside the domain package.
+`muirenee/Fida-Taxi` owns the complete Fida-Taxi product:
 
-## Backend contract alignment
+- Rider Flutter app
+- Driver Flutter app
+- shared Dart domain and API packages
+- NestJS business API under `services/backend`
+- PostgreSQL/PostGIS schema dedicated to Fida-Taxi
+- Redis instance dedicated to Fida-Taxi
+- Go telemetry service under `services/telemetry`
+- Docker deployment under `deploy/`
 
-The backend database is authoritative for supported vehicle types. Mobile wire values are therefore:
+`muirenee/Fida-Ride` is a different project. Fida-Taxi does not clone, start, stop, migrate, or reuse Fida-Ride runtime services.
+
+`fida_core` remains transport-agnostic. Backend-specific field names are translated inside `fida_api`, not inside the domain package.
+
+## Backend contract
+
+The Fida-Taxi database is authoritative for supported vehicle types. Mobile wire values are:
 
 `taxi`, `moto`, `premium`, `tuk_tuk`, `ev`, `accessible`, and `other`.
 
-The current backend trip table uses a smaller persistence state set than the mobile ride lifecycle. The API boundary maps only unambiguous states:
+The Fida-Taxi trip persistence states map to the mobile lifecycle as follows:
 
 - `created` -> `quoting`
 - `matching` -> `searching`
 - `accepted` -> `driver_assigned`
+- `en_route` -> `driver_en_route`
+- `arrived` -> `driver_arrived`
 - `picked_up` -> `in_progress`
 - `completed` -> `completed`
+- `cancelled` -> `cancelled_by_rider` or `cancelled_by_driver` according to `cancellation_actor`
 
-Backend `cancelled` is intentionally not mapped to a domain cancellation state because the existing persistence value does not identify who cancelled the trip. The backend contract must carry an explicit cancellation reason/actor before the mobile domain consumes it as `cancelled_by_rider` or `cancelled_by_driver`.
+All authoritative ride mutations increment the server revision.

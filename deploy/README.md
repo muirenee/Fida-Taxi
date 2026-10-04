@@ -1,98 +1,42 @@
 # Fida Taxi Server Operations
 
-`Fida-Taxi` is the product/mobile repository. `Fida-Ride` remains the authoritative backend repository.
+`Fida-Taxi` is a completely independent project from `Fida-Ride`.
 
-## Existing sibling Fida-Ride is preferred
+It has its own backend source, database, Redis instance, telemetry service, Docker network, volumes, secrets, container names, and host ports. This deployment must never start, stop, migrate, reuse, or modify any `fida-ride-*` container or Fida-Ride data directory.
 
-If this path exists:
+## Fida-Taxi services
 
-```text
-~/docker/Fida-Ride
-```
+From `~/docker/Fida-Taxi`, the stack manages only:
 
-then `deploy/backend.sh` automatically reuses that exact checkout, its `docker-compose.yml`, its `.env`, and its `.data/postgres` directory.
+- `fida-taxi-postgres`
+- `fida-taxi-redis`
+- `fida-taxi-api`
+- `fida-taxi-telemetry`
 
-It does **not** clone another backend under `.runtime/fida-ride` in that case.
+Persistent storage uses Docker volumes:
 
-The `.runtime/fida-ride` checkout is only a fallback for hosts that do not already have a local Fida-Ride checkout.
+- `fida-taxi-postgres-data`
+- `fida-taxi-redis-data`
 
-You may override detection explicitly with:
+The default host ports are intentionally different from Fida-Ride:
 
-```text
-FIDA_BACKEND_LOCAL_DIR=/absolute/path/to/Fida-Ride
-FIDA_BACKEND_ENV_FILE=/absolute/path/to/Fida-Ride/.env
-```
+- PostgreSQL: `55432`
+- Redis: `56379`
+- NestJS API: `3100`
+- Go telemetry: `8180`
 
-## Safety check
-
-Before starting or stopping the stack, the wrapper verifies the bind mount of the existing `fida-ride-postgres` container.
-
-Run:
-
-```bash
-./deploy/backend.sh doctor
-```
-
-It shows:
-
-- selected Fida-Ride checkout
-- selected backend `.env`
-- expected PostgreSQL data directory
-- PostgreSQL data directory currently mounted into the running container
-
-If they differ, `up`, `migrate`, `adopt-existing`, `restart`, and `down` refuse to proceed. This prevents a second checkout from silently recreating the same named container against a different database directory.
-
-## Existing Fida-Ride deployment
-
-For a host that already runs Fida-Ride:
+## First start
 
 ```bash
 cd ~/docker/Fida-Taxi
+./deploy/backend.sh init
 ./deploy/backend.sh doctor
-./deploy/backend.sh status
-./deploy/backend.sh health
-```
-
-`init` does not generate new PostgreSQL/Redis/JWT/OTP secrets when an existing sibling Fida-Ride checkout is detected. It reuses the existing Fida-Ride `.env`.
-
-To synchronize the existing backend safely:
-
-```bash
-./deploy/backend.sh sync
-```
-
-If the Fida-Ride checkout is on the configured branch (normally `main`) and clean, this performs a fast-forward-only update. It refuses to overwrite local changes.
-
-## Starting/updating the existing stack
-
-After `doctor` confirms the existing PostgreSQL container points to `~/docker/Fida-Ride/.data/postgres`:
-
-```bash
+./deploy/backend.sh config
 ./deploy/backend.sh up
 ./deploy/backend.sh health
 ```
 
-`up` performs these operations in order:
-
-1. Safely synchronizes the selected Fida-Ride checkout.
-2. Validates its Docker Compose configuration.
-3. Verifies that an existing PostgreSQL container uses the selected checkout's data directory.
-4. Starts/reuses PostgreSQL/PostGIS and Redis.
-5. Applies tracked database migrations.
-6. Builds/starts the NestJS Core API and Go telemetry service.
-
-## Existing pre-v12 database
-
-If the PostgreSQL data already contains the old Fida-Ride schema but does not yet have the deployment migration ledger, `up` stops rather than guessing which migrations were previously executed.
-
-For the current pre-v12 deployment, use the one-time adoption command:
-
-```bash
-./deploy/backend.sh adopt-existing
-./deploy/backend.sh up
-```
-
-The adoption command records schema migrations v1-v11 as the existing baseline and then applies v12 and any later migrations.
+`init` creates `~/docker/Fida-Taxi/.env` with independent PostgreSQL, Redis, JWT, and OTP secrets. It does not read or reuse `~/docker/Fida-Ride/.env`.
 
 ## Day-to-day commands
 
@@ -103,21 +47,28 @@ The adoption command records schema migrations v1-v11 as the existing baseline a
 ./deploy/backend.sh logs
 ./deploy/backend.sh restart
 ./deploy/backend.sh down
-./deploy/backend.sh version
 ```
 
-`down` stops containers but never deletes PostgreSQL data.
+`down` stops only the Fida-Taxi Compose project. It does not remove the Fida-Taxi named volumes and does not touch Fida-Ride.
 
-## Network exposure
+## API
 
-By default the API and telemetry services should stay private on `127.0.0.1` behind an HTTPS reverse proxy.
-
-After the public API hostname is configured, set for example:
+The local Core API health endpoint is:
 
 ```text
-FIDA_API_PUBLIC_URL=https://api.example.com/api/v1
+http://127.0.0.1:3100/api/v1/healthz
 ```
 
-Then `./deploy/backend.sh health` checks both the local Core API and the configured public URL.
+The local telemetry health endpoint is:
 
-The Rider and Driver APKs must be built with that same public API URL. `10.0.2.2` is only an Android emulator development address.
+```text
+http://127.0.0.1:8180/healthz
+```
+
+For real phones, put the Fida-Taxi API behind its own HTTPS hostname and set:
+
+```text
+FIDA_API_PUBLIC_URL=https://taxi-api.example.com/api/v1
+```
+
+The Rider and Driver APKs must be built with the same public API URL using `FIDA_API_BASE_URL`. The emulator-only default `10.0.2.2` must not be used for device testing.

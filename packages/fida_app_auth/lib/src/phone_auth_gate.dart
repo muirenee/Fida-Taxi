@@ -22,7 +22,7 @@ final class PhoneAuthGate extends StatefulWidget {
     this.apiFactory,
     this.initialBaseUrl = const String.fromEnvironment(
       'FIDA_API_BASE_URL',
-      defaultValue: 'http://10.0.2.2:3000/api/v1',
+      defaultValue: 'http://10.0.2.2:3100/api/v1',
     ),
     super.key,
   });
@@ -102,7 +102,7 @@ final class _PhoneAuthGateState extends State<PhoneAuthGate> {
           _challenge = null;
           _errorMessage =
               'Verification is not available for this number. '
-              'Confirm the account is registered on the Fida Ride backend.';
+              'Confirm the account is registered on the Fida Taxi backend.';
         });
         return;
       }
@@ -265,10 +265,10 @@ final class _PhoneAuthGateState extends State<PhoneAuthGate> {
                 autocorrect: false,
                 decoration: const InputDecoration(
                   labelText: 'API server (testing)',
-                  hintText: 'https://api.example.com/api/v1',
+                  hintText: 'https://taxi-api.example.com/api/v1',
                   helperText:
-                      'For a physical phone, use an API address reachable '
-                      'from the phone.',
+                      'For a physical phone, use a Fida-Taxi API address '
+                      'reachable from the phone.',
                 ),
               ),
               const SizedBox(height: FidaSpacing.lg),
