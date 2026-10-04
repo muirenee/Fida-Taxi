@@ -58,10 +58,7 @@ final class TripDriverLocation {
       driverId: driverId,
       point: GeoPoint(
         latitude: _requiredDouble(location['latitude'], 'location.latitude'),
-        longitude: _requiredDouble(
-          location['longitude'],
-          'location.longitude',
-        ),
+        longitude: _requiredDouble(location['longitude'], 'location.longitude'),
       ),
       observedAt: rawObservedAt is String && rawObservedAt.trim().isNotEmpty
           ? DateTime.parse(rawObservedAt).toUtc()
