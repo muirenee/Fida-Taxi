@@ -14,6 +14,7 @@ import { AuthenticatedRequest, JwtAuthGuard } from '../auth/auth.guard';
 import {
   CancelRideDto,
   DriverAvailabilityDto,
+  DriverLocationDto,
   DriverTripActionDto,
   RequestRideDto,
 } from './rides.dto';
@@ -51,6 +52,15 @@ export class RidesController {
     @Body() dto: DriverAvailabilityDto,
   ) {
     return this.rides.setDriverAvailability(request.user, dto);
+  }
+
+  @Post('driver/location')
+  @HttpCode(HttpStatus.OK)
+  driverLocation(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: DriverLocationDto,
+  ) {
+    return this.rides.updateDriverLocation(request.user, dto);
   }
 
   @Get(':tripId')
