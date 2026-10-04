@@ -85,9 +85,7 @@ final class _PhoneAuthGateState extends State<PhoneAuthGate> {
   }
 
   FidaCoreApi _replaceApi() {
-    final configuration = FidaApiConfiguration(
-      baseUrl: _serverController.text,
-    );
+    final configuration = FidaApiConfiguration(baseUrl: _serverController.text);
     final api =
         widget.apiFactory?.call(configuration) ??
         FidaCoreApi(configuration: configuration);
@@ -215,7 +213,8 @@ final class _PhoneAuthGateState extends State<PhoneAuthGate> {
         final message = _friendlyError(error);
         if (message.toLowerCase().contains('already registered')) {
           _mode = _AuthMode.signIn;
-          _noticeMessage = 'This phone already has an account. Sign in instead.';
+          _noticeMessage =
+              'This phone already has an account. Sign in instead.';
           _errorMessage = null;
         } else {
           _errorMessage = message;
@@ -435,7 +434,9 @@ final class _PhoneAuthGateState extends State<PhoneAuthGate> {
                   const SizedBox(height: FidaSpacing.md),
                   DropdownButtonFormField<VehicleType>(
                     initialValue: _vehicleType,
-                    decoration: const InputDecoration(labelText: 'Vehicle type'),
+                    decoration: const InputDecoration(
+                      labelText: 'Vehicle type',
+                    ),
                     items: VehicleType.values
                         .map(
                           (type) => DropdownMenuItem<VehicleType>(
