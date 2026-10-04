@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:fida_api/fida_api.dart';
 import 'package:fida_core/fida_core.dart';
 import 'package:fida_design_system/fida_design_system.dart';
+import 'package:fida_maps/fida_maps.dart';
 import 'package:flutter/material.dart';
 
 class DriverOperationsScreen extends StatefulWidget {
@@ -22,23 +23,32 @@ class DriverOperationsScreen extends StatefulWidget {
 }
 
 class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
-  final _latitudeController = TextEditingController();
-  final _longitudeController = TextEditingController();
+  static const GeoPoint _kigaliCenter = GeoPoint(
+    latitude: -1.9441,
+    longitude: 30.0619,
+  );
 
+  final DeviceLocationService _locationService = const DeviceLocationService();
+
+  GeoPoint? _currentLocation;
   RideSnapshot? _activeTrip;
   List<RideSnapshot> _offers = const <RideSnapshot>[];
+  RoutePreview? _route;
+  BackendTripStatus? _routedStatus;
   String? _errorMessage;
   bool _available = false;
   bool _busy = false;
   bool _polling = false;
+  bool _locating = false;
   Timer? _heartbeatTimer;
   Timer? _offerTimer;
   Timer? _tripTimer;
+  StreamSubscription<GeoPoint>? _locationSubscription;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_recoverActiveTrip());
+    unawaited(_initialize());
   }
 
   @override
@@ -46,24 +56,93 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
     _heartbeatTimer?.cancel();
     _offerTimer?.cancel();
     _tripTimer?.cancel();
-    _latitudeController.dispose();
-    _longitudeController.dispose();
+    unawaited(_locationSubscription?.cancel());
     super.dispose();
+  }
+
+  Future<void> _initialize() async {
+    await _recoverActiveTrip();
+    await _refreshDeviceLocation(silent: true);
+    if (_activeTrip != null) {
+      await _startLocationStream();
+      await _loadActiveRoute(force: true);
+    }
   }
 
   Future<void> _recoverActiveTrip() async {
     try {
       final trip = await widget.api.getActiveDriverTrip(widget.session);
       if (!mounted || trip == null) return;
-      setState(() {
-        _activeTrip = trip;
-      });
+      setState(() => _activeTrip = trip);
       _startTripPolling();
     } on Object catch (error) {
       if (!mounted) return;
-      setState(() {
-        _errorMessage = _friendlyError(error);
-      });
+      setState(() => _errorMessage = _friendlyError(error));
+    }
+  }
+
+  Future<void> _refreshDeviceLocation({bool silent = false}) async {
+    if (_locating) return;
+    setState(() {
+      _locating = true;
+      if (!silent) _errorMessage = null;
+    });
+    try {
+      final point = await _locationService.current();
+      if (!mounted) return;
+      setState(() => _currentLocation = point);
+      if (_available || _activeTrip != null) {
+        await _publishLocation(point, silent: true);
+      }
+    } on Object catch (error) {
+      if (!mounted || silent) return;
+      setState(() => _errorMessage = _friendlyError(error));
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
+  }
+
+  Future<void> _startLocationStream() async {
+    if (_locationSubscription != null) return;
+    try {
+      final stream = _locationService.watch(distanceFilterMeters: 8);
+      _locationSubscription = stream.listen(
+        (point) {
+          if (!mounted) return;
+          setState(() => _currentLocation = point);
+          if (_available || _activeTrip != null) {
+            unawaited(_publishLocation(point, silent: true));
+          }
+        },
+        onError: (Object error) {
+          if (!mounted) return;
+          setState(() => _errorMessage = _friendlyError(error));
+        },
+      );
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = _friendlyError(error));
+    }
+  }
+
+  Future<void> _stopLocationStream() async {
+    final subscription = _locationSubscription;
+    _locationSubscription = null;
+    await subscription?.cancel();
+  }
+
+  Future<void> _publishLocation(
+    GeoPoint point, {
+    bool silent = false,
+  }) async {
+    try {
+      await widget.api.updateDriverLocation(
+        session: widget.session,
+        point: point,
+      );
+    } on Object catch (error) {
+      if (!mounted || silent) return;
+      setState(() => _errorMessage = _friendlyError(error));
     }
   }
 
@@ -74,34 +153,28 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
     });
 
     try {
-      final latitude = _parseCoordinate(_latitudeController.text, 'latitude');
-      final longitude = _parseCoordinate(
-        _longitudeController.text,
-        'longitude',
-      );
+      var point = _currentLocation;
+      point ??= await _locationService.current();
       await widget.api.setDriverAvailability(
         session: widget.session,
         isAvailable: true,
-        latitude: latitude,
-        longitude: longitude,
+        latitude: point.latitude,
+        longitude: point.longitude,
       );
       if (!mounted) return;
       setState(() {
+        _currentLocation = point;
         _available = true;
       });
+      await _startLocationStream();
       _startAvailabilityLoop();
+      await _publishLocation(point, silent: true);
       await _loadOffers();
     } on Object catch (error) {
       if (!mounted) return;
-      setState(() {
-        _errorMessage = _friendlyError(error);
-      });
+      setState(() => _errorMessage = _friendlyError(error));
     } finally {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-        });
-      }
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -116,6 +189,7 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
         isAvailable: false,
       );
       _stopAvailabilityLoop();
+      await _stopLocationStream();
       if (!mounted) return;
       setState(() {
         _available = false;
@@ -123,9 +197,7 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
       });
     } on Object catch (error) {
       if (!mounted) return;
-      setState(() {
-        _errorMessage = _friendlyError(error);
-      });
+      setState(() => _errorMessage = _friendlyError(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -152,20 +224,19 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
   }
 
   Future<void> _sendHeartbeat() async {
-    if (!_available || _activeTrip != null) return;
-    final latitude = double.tryParse(_latitudeController.text.trim());
-    final longitude = double.tryParse(_longitudeController.text.trim());
-    if (latitude == null || longitude == null) return;
+    final point = _currentLocation;
+    if (!_available || _activeTrip != null || point == null) return;
 
     try {
       await widget.api.setDriverAvailability(
         session: widget.session,
         isAvailable: true,
-        latitude: latitude,
-        longitude: longitude,
+        latitude: point.latitude,
+        longitude: point.longitude,
       );
+      await _publishLocation(point, silent: true);
     } on Object {
-      // The foreground offer refresh will surface actionable connection errors.
+      // The foreground offer refresh surfaces actionable connection errors.
     }
   }
 
@@ -181,9 +252,7 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
       });
     } on Object catch (error) {
       if (!mounted || silent) return;
-      setState(() {
-        _errorMessage = _friendlyError(error);
-      });
+      setState(() => _errorMessage = _friendlyError(error));
     } finally {
       _polling = false;
     }
@@ -205,13 +274,18 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
         _available = false;
         _offers = const <RideSnapshot>[];
         _activeTrip = trip;
+        _route = null;
+        _routedStatus = null;
       });
+      await _startLocationStream();
+      if (_currentLocation != null) {
+        await _publishLocation(_currentLocation!, silent: true);
+      }
+      await _loadActiveRoute(force: true);
       _startTripPolling();
     } on Object catch (error) {
       if (!mounted) return;
-      setState(() {
-        _errorMessage = _friendlyError(error);
-      });
+      setState(() => _errorMessage = _friendlyError(error));
       await _loadOffers(silent: true);
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -235,13 +309,18 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
       if (!mounted) return;
       setState(() {
         _activeTrip = updated;
+        _route = null;
+        _routedStatus = null;
       });
-      if (updated.isTerminal) _stopTripPolling();
+      if (updated.isTerminal) {
+        _stopTripPolling();
+        await _stopLocationStream();
+      } else {
+        await _loadActiveRoute(force: true);
+      }
     } on Object catch (error) {
       if (!mounted) return;
-      setState(() {
-        _errorMessage = _friendlyError(error);
-      });
+      setState(() => _errorMessage = _friendlyError(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -262,15 +341,15 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
         reason: 'Cancelled from Driver app',
       );
       _stopTripPolling();
+      await _stopLocationStream();
       if (!mounted) return;
       setState(() {
         _activeTrip = cancelled;
+        _route = null;
       });
     } on Object catch (error) {
       if (!mounted) return;
-      setState(() {
-        _errorMessage = _friendlyError(error);
-      });
+      setState(() => _errorMessage = _friendlyError(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -298,34 +377,60 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
         tripId: trip.tripId,
       );
       if (!mounted) return;
-      setState(() {
-        _activeTrip = updated;
-      });
-      if (updated.isTerminal) _stopTripPolling();
+      final statusChanged = updated.status != trip.status;
+      setState(() => _activeTrip = updated);
+      if (updated.isTerminal) {
+        _stopTripPolling();
+        await _stopLocationStream();
+      } else if (statusChanged) {
+        await _loadActiveRoute(force: true);
+      }
     } on Object {
       // Manual actions surface failures; background refresh remains quiet.
+    }
+  }
+
+  Future<void> _loadActiveRoute({bool force = false}) async {
+    final trip = _activeTrip;
+    final current = _currentLocation;
+    if (trip == null || current == null || trip.isTerminal) return;
+    if (!force && _routedStatus == trip.status && _route != null) return;
+
+    final target = trip.status == BackendTripStatus.pickedUp
+        ? trip.dropoff
+        : trip.pickup;
+    try {
+      final route = await widget.api.getRoutePreview(
+        session: widget.session,
+        pickup: current,
+        dropoff: target,
+      );
+      if (!mounted || _activeTrip?.tripId != trip.tripId) return;
+      setState(() {
+        _route = route;
+        _routedStatus = trip.status;
+      });
+    } on Object {
+      // Navigation preview is optional; trip lifecycle stays operational.
     }
   }
 
   void _finishTripCard() {
     setState(() {
       _activeTrip = null;
+      _route = null;
+      _routedStatus = null;
       _errorMessage = null;
     });
   }
 
-  double _parseCoordinate(String raw, String label) {
-    final value = double.tryParse(raw.trim());
-    if (value == null) throw FormatException('Enter a valid $label.');
-    return value;
-  }
-
   String _friendlyError(Object error) {
     if (error is FidaApiException) return error.message;
+    if (error is LocationAccessException) return error.message;
     if (error is ArgumentError || error is FormatException) {
       return error.toString();
     }
-    return 'Unable to complete the request. Check the API connection and try again.';
+    return 'Unable to complete the request. Check your connection and GPS and try again.';
   }
 
   @override
@@ -344,24 +449,36 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
         ],
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(FidaSpacing.lg),
-          children: <Widget>[
-            if (trip != null)
-              _buildActiveTrip(context, trip)
-            else
-              _buildAvailability(context),
-            if (_errorMessage != null) ...<Widget>[
-              const SizedBox(height: FidaSpacing.lg),
-              _ErrorPanel(message: _errorMessage!),
+        child: RefreshIndicator(
+          onRefresh: trip == null
+              ? () async {
+                  await _refreshDeviceLocation();
+                  await _loadOffers();
+                }
+              : () async {
+                  await _refreshDeviceLocation();
+                  await _refreshActiveTrip();
+                },
+          child: ListView(
+            padding: const EdgeInsets.all(FidaSpacing.lg),
+            children: <Widget>[
+              if (trip != null)
+                _buildActiveTrip(context, trip)
+              else
+                _buildAvailability(context),
+              if (_errorMessage != null) ...<Widget>[
+                const SizedBox(height: FidaSpacing.lg),
+                _ErrorPanel(message: _errorMessage!),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildAvailability(BuildContext context) {
+    final point = _currentLocation;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -383,38 +500,34 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
         const SizedBox(height: FidaSpacing.xs),
         Text(
           _available
-              ? 'Waiting for nearby ride requests.'
-              : 'Set your current dispatch coordinates, then go online.',
+              ? 'Your live GPS position is shared for nearby dispatch offers.'
+              : 'Fida Taxi uses your phone GPS when you go online.',
         ),
-        const SizedBox(height: FidaSpacing.xl),
+        const SizedBox(height: FidaSpacing.lg),
+        FidaMapView(
+          center: point ?? _kigaliCenter,
+          currentLocation: point,
+          height: 300,
+        ),
+        const SizedBox(height: FidaSpacing.sm),
         Row(
           children: <Widget>[
-            Expanded(
-              child: TextField(
-                controller: _latitudeController,
-                enabled: !_available && !_busy,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                  signed: true,
-                ),
-                decoration: const InputDecoration(labelText: 'Latitude'),
-              ),
-            ),
+            const Icon(Icons.gps_fixed, size: 18),
             const SizedBox(width: FidaSpacing.sm),
             Expanded(
-              child: TextField(
-                controller: _longitudeController,
-                enabled: !_available && !_busy,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                  signed: true,
-                ),
-                decoration: const InputDecoration(labelText: 'Longitude'),
+              child: Text(
+                point == null
+                    ? 'GPS position not acquired yet'
+                    : '${point.latitude.toStringAsFixed(5)}, ${point.longitude.toStringAsFixed(5)}',
               ),
+            ),
+            TextButton(
+              onPressed: _locating ? null : () => _refreshDeviceLocation(),
+              child: Text(_locating ? 'Locating…' : 'Refresh GPS'),
             ),
           ],
         ),
-        const SizedBox(height: FidaSpacing.lg),
+        const SizedBox(height: FidaSpacing.md),
         FidaPrimaryButton(
           label: _available ? 'Go offline' : 'Go online',
           isLoading: _busy,
@@ -445,6 +558,7 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
           ..._offers.map(
             (offer) => _OfferCard(
               offer: offer,
+              currentLocation: point,
               busy: _busy,
               onAccept: () => _acceptRide(offer),
             ),
@@ -456,6 +570,10 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
   Widget _buildActiveTrip(BuildContext context, RideSnapshot trip) {
     final action = _nextAction(trip);
     final actionLabel = _nextActionLabel(trip);
+    final current = _currentLocation;
+    final navigationTarget = trip.status == BackendTripStatus.pickedUp
+        ? trip.dropoff
+        : trip.pickup;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -465,8 +583,34 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
           style: Theme.of(context).textTheme.headlineMedium,
         ),
         const SizedBox(height: FidaSpacing.xs),
-        Text('Trip ${trip.tripId}'),
+        Text(
+          trip.status == BackendTripStatus.pickedUp
+              ? 'Navigate to the rider destination.'
+              : 'Navigate to the pickup point.',
+        ),
         const SizedBox(height: FidaSpacing.lg),
+        FidaMapView(
+          center: current ?? navigationTarget,
+          currentLocation: current,
+          pickup: trip.pickup,
+          dropoff: trip.dropoff,
+          route: _route?.points ?? const <GeoPoint>[],
+          height: 350,
+        ),
+        if (_route != null) ...<Widget>[
+          const SizedBox(height: FidaSpacing.sm),
+          Row(
+            children: <Widget>[
+              const Icon(Icons.route, size: 20),
+              const SizedBox(width: FidaSpacing.sm),
+              Text(
+                '${_route!.distanceKm.toStringAsFixed(1)} km · ${_durationLabel(_route!.duration)}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: FidaSpacing.md),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(FidaSpacing.lg),
@@ -478,14 +622,12 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
                 _DetailRow(
                   label: 'Pickup',
                   value:
-                      '${trip.pickup.latitude.toStringAsFixed(5)}, '
-                      '${trip.pickup.longitude.toStringAsFixed(5)}',
+                      '${trip.pickup.latitude.toStringAsFixed(5)}, ${trip.pickup.longitude.toStringAsFixed(5)}',
                 ),
                 _DetailRow(
                   label: 'Destination',
                   value:
-                      '${trip.dropoff.latitude.toStringAsFixed(5)}, '
-                      '${trip.dropoff.longitude.toStringAsFixed(5)}',
+                      '${trip.dropoff.latitude.toStringAsFixed(5)}, ${trip.dropoff.longitude.toStringAsFixed(5)}',
                 ),
                 _DetailRow(label: 'Revision', value: '${trip.revision}'),
               ],
@@ -556,16 +698,26 @@ class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
     final decimals = trip.currency == 'RWF' ? 0 : 2;
     return '${amount.toStringAsFixed(decimals)} ${trip.currency}';
   }
+
+  String _durationLabel(Duration duration) {
+    final minutes = (duration.inSeconds / 60).ceil();
+    if (minutes < 60) return '$minutes min';
+    final hours = minutes ~/ 60;
+    final remaining = minutes % 60;
+    return remaining == 0 ? '$hours h' : '$hours h $remaining min';
+  }
 }
 
 class _OfferCard extends StatelessWidget {
   const _OfferCard({
     required this.offer,
+    required this.currentLocation,
     required this.busy,
     required this.onAccept,
   });
 
   final RideSnapshot offer;
+  final GeoPoint? currentLocation;
   final bool busy;
   final VoidCallback onAccept;
 
@@ -574,26 +726,35 @@ class _OfferCard extends StatelessWidget {
     final amount = double.tryParse(offer.fareAmount ?? '');
     final fare = amount == null
         ? 'Fare pending'
-        : '${amount.toStringAsFixed(offer.currency == 'RWF' ? 0 : 2)} '
-              '${offer.currency}';
+        : '${amount.toStringAsFixed(offer.currency == 'RWF' ? 0 : 2)} ${offer.currency}';
 
     return Card(
       margin: const EdgeInsets.only(bottom: FidaSpacing.md),
       child: Padding(
         padding: const EdgeInsets.all(FidaSpacing.md),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Text(fare, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: FidaSpacing.sm),
+            SizedBox(
+              height: 180,
+              child: FidaMapView(
+                center: currentLocation ?? offer.pickup,
+                currentLocation: currentLocation,
+                pickup: offer.pickup,
+                dropoff: offer.dropoff,
+                height: 180,
+                borderRadius: 16,
+              ),
+            ),
+            const SizedBox(height: FidaSpacing.sm),
             Text(
-              'Pickup: ${offer.pickup.latitude.toStringAsFixed(5)}, '
-              '${offer.pickup.longitude.toStringAsFixed(5)}',
+              'Pickup: ${offer.pickup.latitude.toStringAsFixed(5)}, ${offer.pickup.longitude.toStringAsFixed(5)}',
             ),
             const SizedBox(height: FidaSpacing.xs),
             Text(
-              'Destination: ${offer.dropoff.latitude.toStringAsFixed(5)}, '
-              '${offer.dropoff.longitude.toStringAsFixed(5)}',
+              'Destination: ${offer.dropoff.latitude.toStringAsFixed(5)}, ${offer.dropoff.longitude.toStringAsFixed(5)}',
             ),
             const SizedBox(height: FidaSpacing.md),
             FidaPrimaryButton(
