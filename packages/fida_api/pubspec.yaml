@@ -1,5 +1,5 @@
 name: fida_api
-description: Typed transport client for the Fida Ride backend platform.
+description: Typed transport client for the Fida Taxi backend platform.
 version: 0.1.0
 publish_to: none
 resolution: workspace
