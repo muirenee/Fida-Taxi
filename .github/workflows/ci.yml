@@ -7,6 +7,7 @@ on:
       - develop
       - "feature/**"
       - "modernization/**"
+      - "fix/**"
   pull_request:
   workflow_dispatch:
 
@@ -21,7 +22,7 @@ jobs:
   validate:
     name: Analyze, Test and Build
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
 
     steps:
       - name: Checkout repository
@@ -29,6 +30,47 @@ jobs:
 
       - name: Validate deployment scripts
         run: bash -n deploy/backend.sh
+
+      - name: Validate Docker Compose isolation
+        env:
+          POSTGRES_PASSWORD: ci-postgres-password
+          REDIS_PASSWORD: ci-redis-password
+          JWT_HS256_SECRET: ci-jwt-secret-ci-jwt-secret
+          OTP_HMAC_SECRET: ci-otp-secret-ci-otp-secret
+        run: docker compose --project-name fida-taxi -f deploy/docker-compose.yml config --quiet
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: services/backend/package.json
+
+      - name: Install backend dependencies
+        working-directory: services/backend
+        run: npm install
+
+      - name: Typecheck NestJS backend
+        working-directory: services/backend
+        run: npm run typecheck
+
+      - name: Build NestJS backend
+        working-directory: services/backend
+        run: npm run build
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.23.x"
+          cache-dependency-path: services/telemetry/go.mod
+
+      - name: Build Go telemetry
+        working-directory: services/telemetry
+        run: go build ./...
+
+      - name: Test Go telemetry
+        working-directory: services/telemetry
+        run: go test ./...
 
       - name: Set up Java
         uses: actions/setup-java@v6
@@ -48,6 +90,9 @@ jobs:
 
       - name: Display toolchain versions
         run: |
+          node --version
+          npm --version
+          go version
           flutter --version
           dart --version
           java -version
@@ -55,7 +100,7 @@ jobs:
       - name: Bootstrap workspace
         run: ./setup_workspace.sh --bootstrap-only
 
-      - name: Verify reproducible bootstrap
+      - name: Verify reproducible Flutter bootstrap
         run: git diff --exit-code -- apps packages pubspec.lock
 
       - name: List workspace packages
