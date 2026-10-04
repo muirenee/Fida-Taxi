@@ -67,15 +67,14 @@ final class FidaMapView extends StatelessWidget {
               ),
               children: <Widget>[
                 TileLayer(
-                  urlTemplate:
-                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'com.fidalix.fida_taxi',
                   maxNativeZoom: 19,
                 ),
                 if (route.length >= 2)
                   PolylineLayer(
-                    polylines: <Polyline<void>>[
-                      Polyline<void>(
+                    polylines: <Polyline<Object>>[
+                      Polyline<Object>(
                         points: route.map(_latLng).toList(growable: false),
                         strokeWidth: 5,
                         color: Theme.of(context).colorScheme.primary,
@@ -90,9 +89,9 @@ final class FidaMapView extends StatelessWidget {
               bottom: 6,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface.withValues(
-                    alpha: 0.88,
-                  ),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surface.withValues(alpha: 0.88),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Padding(
