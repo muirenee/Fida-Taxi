@@ -1,11 +1,7 @@
 import 'package:fida_core/fida_core.dart';
 
 final class MapPlace {
-  const MapPlace({
-    required this.id,
-    required this.label,
-    required this.point,
-  });
+  const MapPlace({required this.id, required this.label, required this.point});
 
   final String id;
   final String label;
@@ -49,16 +45,20 @@ final class RoutePreview {
         json['duration_seconds'],
         'duration_seconds',
       ),
-      points: rawCoordinates.map((value) {
-        if (value is! Map<Object?, Object?>) {
-          throw const FormatException('route coordinate must be an object.');
-        }
-        final coordinate = Map<String, dynamic>.from(value);
-        return GeoPoint(
-          latitude: _requiredDouble(coordinate['latitude'], 'latitude'),
-          longitude: _requiredDouble(coordinate['longitude'], 'longitude'),
-        );
-      }).toList(growable: false),
+      points: rawCoordinates
+          .map((value) {
+            if (value is! Map<Object?, Object?>) {
+              throw const FormatException(
+                'route coordinate must be an object.',
+              );
+            }
+            final coordinate = Map<String, dynamic>.from(value);
+            return GeoPoint(
+              latitude: _requiredDouble(coordinate['latitude'], 'latitude'),
+              longitude: _requiredDouble(coordinate['longitude'], 'longitude'),
+            );
+          })
+          .toList(growable: false),
     );
   }
 }
