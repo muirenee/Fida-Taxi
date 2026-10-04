@@ -8,6 +8,7 @@ on:
       - "feature/**"
       - "modernization/**"
       - "fix/**"
+      - "chore/**"
   pull_request:
   workflow_dispatch:
 
@@ -23,6 +24,8 @@ jobs:
     name: Analyze, Test and Build
     runs-on: ubuntu-latest
     timeout-minutes: 50
+    env:
+      FIDA_API_BASE_URL: https://taxi-api.netsource.co.rw/api/v1
 
     steps:
       - name: Checkout repository
@@ -118,7 +121,9 @@ jobs:
 
       - name: Build Rider Android debug APK
         working-directory: apps/rider
-        run: flutter build apk --debug --no-pub
+        run: >-
+          flutter build apk --debug --no-pub
+          --dart-define=FIDA_API_BASE_URL=${FIDA_API_BASE_URL}
 
       - name: Stage Rider APK
         run: |
@@ -135,7 +140,9 @@ jobs:
 
       - name: Build Driver Android debug APK
         working-directory: apps/driver
-        run: flutter build apk --debug --no-pub
+        run: >-
+          flutter build apk --debug --no-pub
+          --dart-define=FIDA_API_BASE_URL=${FIDA_API_BASE_URL}
 
       - name: Stage Driver APK
         run: |
