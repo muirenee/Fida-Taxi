@@ -2,10 +2,14 @@
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ENV_FILE="${FIDA_DEPLOY_ENV_FILE:-$ROOT_DIR/.env}"
+CONTROL_ENV_FILE="${FIDA_DEPLOY_ENV_FILE:-$ROOT_DIR/.env}"
 RUNTIME_ROOT="$ROOT_DIR/.runtime"
-BACKEND_DIR="$RUNTIME_ROOT/fida-ride"
-BACKEND_COMPOSE="$BACKEND_DIR/docker-compose.yml"
+SIBLING_BACKEND_DIR="$(cd "$ROOT_DIR/.." && pwd)/Fida-Ride"
+MANAGED_BACKEND_DIR="$RUNTIME_ROOT/fida-ride"
+BACKEND_DIR=''
+BACKEND_COMPOSE=''
+BACKEND_ENV_FILE=''
+BACKEND_MODE=''
 
 log() {
   printf '[fida-server] %s\n' "$*"
@@ -21,18 +25,19 @@ usage() {
 Usage: ./deploy/backend.sh <command>
 
 Commands:
-  init            Create .env and generate required local secrets.
-  sync            Synchronize the authoritative Fida-Ride backend source.
-  config          Validate the backend Docker Compose configuration.
-  up              Start PostgreSQL/Redis, apply migrations, then start API/telemetry.
+  init            Initialize deployment settings without replacing an existing Fida-Ride environment.
+  sync            Safely synchronize the selected Fida-Ride checkout.
+  config          Validate the selected backend Docker Compose configuration.
+  doctor          Show which Fida-Ride checkout/data directory the containers use.
+  up              Start/reuse PostgreSQL/Redis, apply migrations, then start API/telemetry.
   migrate         Apply pending migrations on a fresh/managed database.
   adopt-existing  Baseline an existing pre-v12 database through v11, then migrate forward.
   restart         Restart the NestJS API and Go telemetry services.
   status          Show Docker Compose service status.
   health          Check local API and telemetry health endpoints.
   logs            Follow backend service logs.
-  down            Stop the backend stack without deleting database data.
-  version         Show the synchronized backend commit.
+  down            Stop the selected backend stack without deleting database data.
+  version         Show the selected backend commit.
 EOF
 }
 
@@ -40,26 +45,62 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "Required command not found: $1"
 }
 
-load_env() {
-  if [[ -f "$ENV_FILE" ]]; then
+load_control_env() {
+  if [[ -f "$CONTROL_ENV_FILE" ]]; then
     set -a
     # shellcheck disable=SC1090
-    source "$ENV_FILE"
+    source "$CONTROL_ENV_FILE"
     set +a
   fi
 
   FIDA_BACKEND_REPOSITORY="${FIDA_BACKEND_REPOSITORY:-https://github.com/muirenee/Fida-Ride.git}"
   FIDA_BACKEND_REF="${FIDA_BACKEND_REF:-main}"
+}
+
+resolve_backend() {
+  load_control_env
+
+  if [[ -n "${FIDA_BACKEND_LOCAL_DIR:-}" ]]; then
+    BACKEND_DIR="${FIDA_BACKEND_LOCAL_DIR/#\~/$HOME}"
+    BACKEND_MODE='existing'
+  elif [[ -d "$SIBLING_BACKEND_DIR/.git" && -f "$SIBLING_BACKEND_DIR/docker-compose.yml" ]]; then
+    BACKEND_DIR="$SIBLING_BACKEND_DIR"
+    BACKEND_MODE='existing'
+  else
+    BACKEND_DIR="$MANAGED_BACKEND_DIR"
+    BACKEND_MODE='managed'
+  fi
+
+  BACKEND_COMPOSE="$BACKEND_DIR/docker-compose.yml"
+
+  if [[ -n "${FIDA_BACKEND_ENV_FILE:-}" ]]; then
+    BACKEND_ENV_FILE="${FIDA_BACKEND_ENV_FILE/#\~/$HOME}"
+  elif [[ "$BACKEND_MODE" == 'existing' ]]; then
+    BACKEND_ENV_FILE="$BACKEND_DIR/.env"
+  else
+    BACKEND_ENV_FILE="$CONTROL_ENV_FILE"
+  fi
+}
+
+load_backend_env() {
+  resolve_backend
+  [[ -f "$BACKEND_ENV_FILE" ]] || {
+    if [[ "$BACKEND_MODE" == 'existing' ]]; then
+      fail "Existing Fida-Ride checkout detected at $BACKEND_DIR but $BACKEND_ENV_FILE is missing. Configure the backend in Fida-Ride; do not generate a second database environment from Fida-Taxi."
+    fi
+    fail "Missing $BACKEND_ENV_FILE. Run ./deploy/backend.sh init first."
+  }
+
+  set -a
+  # shellcheck disable=SC1090
+  source "$BACKEND_ENV_FILE"
+  set +a
+
   POSTGRES_DB="${POSTGRES_DB:-fida_ride}"
   POSTGRES_USER="${POSTGRES_USER:-fida_ride}"
   NESTJS_CORE_PORT="${NESTJS_CORE_PORT:-3000}"
   GO_TELEMETRY_PORT="${GO_TELEMETRY_PORT:-8080}"
   SERVICE_BIND_IP="${SERVICE_BIND_IP:-127.0.0.1}"
-}
-
-require_env_file() {
-  [[ -f "$ENV_FILE" ]] || fail "Missing $ENV_FILE. Run ./deploy/backend.sh init first."
-  load_env
 
   local required=(
     POSTGRES_PASSWORD
@@ -69,40 +110,72 @@ require_env_file() {
   )
   local key
   for key in "${required[@]}"; do
-    [[ -n "${!key:-}" ]] || fail "$key is empty in $ENV_FILE"
+    [[ -n "${!key:-}" ]] || fail "$key is empty in $BACKEND_ENV_FILE"
   done
 }
 
 replace_env_value() {
   local key="$1"
   local value="$2"
-  sed -i "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
+  sed -i "s|^${key}=.*|${key}=${value}|" "$CONTROL_ENV_FILE"
 }
 
 init_env() {
   require_command openssl
-  if [[ -f "$ENV_FILE" ]]; then
-    log "$ENV_FILE already exists; leaving it unchanged."
+  resolve_backend
+
+  if [[ "$BACKEND_MODE" == 'existing' ]]; then
+    log "Existing Fida-Ride checkout detected at $BACKEND_DIR."
+    if [[ -f "$BACKEND_ENV_FILE" ]]; then
+      log "Using its existing environment: $BACKEND_ENV_FILE"
+      log 'No PostgreSQL/Redis/JWT/OTP secrets were generated or replaced.'
+      return 0
+    fi
+    fail "The existing backend has no $BACKEND_ENV_FILE. Configure Fida-Ride first; Fida-Taxi will not create a parallel database environment."
+  fi
+
+  if [[ -f "$CONTROL_ENV_FILE" ]]; then
+    log "$CONTROL_ENV_FILE already exists; leaving it unchanged."
     return 0
   fi
 
   umask 077
-  cp "$ROOT_DIR/.env.example" "$ENV_FILE"
+  cp "$ROOT_DIR/.env.example" "$CONTROL_ENV_FILE"
   replace_env_value POSTGRES_PASSWORD "$(openssl rand -hex 32)"
   replace_env_value REDIS_PASSWORD "$(openssl rand -hex 32)"
   replace_env_value JWT_HS256_SECRET "$(openssl rand -hex 32)"
   replace_env_value OTP_HMAC_SECRET "$(openssl rand -hex 32)"
-  chmod 600 "$ENV_FILE"
-  log "Created $ENV_FILE with generated server secrets."
+  chmod 600 "$CONTROL_ENV_FILE"
+  log "Created $CONTROL_ENV_FILE with generated server secrets for managed-backend mode."
 }
 
 sync_backend() {
   require_command git
-  load_env
-  mkdir -p "$RUNTIME_ROOT"
+  resolve_backend
 
+  if [[ "$BACKEND_MODE" == 'existing' ]]; then
+    [[ -d "$BACKEND_DIR/.git" ]] || fail "Configured Fida-Ride checkout is not a Git repository: $BACKEND_DIR"
+    [[ -f "$BACKEND_COMPOSE" ]] || fail "Missing $BACKEND_COMPOSE"
+
+    local branch
+    branch="$(git -C "$BACKEND_DIR" symbolic-ref --quiet --short HEAD || true)"
+    if [[ "$branch" == "$FIDA_BACKEND_REF" ]]; then
+      if ! git -C "$BACKEND_DIR" diff --quiet || ! git -C "$BACKEND_DIR" diff --cached --quiet; then
+        fail "Existing Fida-Ride checkout has uncommitted changes. Commit/stash them before synchronization."
+      fi
+      git -C "$BACKEND_DIR" fetch --prune origin "$FIDA_BACKEND_REF"
+      git -C "$BACKEND_DIR" merge --ff-only "origin/$FIDA_BACKEND_REF"
+    else
+      log "Using existing Fida-Ride checkout on branch ${branch:-detached}; not switching it automatically."
+    fi
+
+    log "Using existing backend at $BACKEND_DIR ($(git -C "$BACKEND_DIR" rev-parse --short HEAD))."
+    return 0
+  fi
+
+  mkdir -p "$RUNTIME_ROOT"
   if [[ ! -d "$BACKEND_DIR/.git" ]]; then
-    log "Cloning backend into $BACKEND_DIR"
+    log "No sibling Fida-Ride checkout found; cloning fallback backend into $BACKEND_DIR"
     git clone "$FIDA_BACKEND_REPOSITORY" "$BACKEND_DIR"
   fi
 
@@ -116,20 +189,69 @@ sync_backend() {
     git -C "$BACKEND_DIR" checkout --detach FETCH_HEAD
   fi
 
-  log "Backend synchronized at $(git -C "$BACKEND_DIR" rev-parse --short HEAD)."
+  log "Fallback backend synchronized at $(git -C "$BACKEND_DIR" rev-parse --short HEAD)."
 }
 
 compose() {
-  require_env_file
-  [[ -f "$BACKEND_COMPOSE" ]] || fail "Backend source is not synchronized. Run ./deploy/backend.sh sync first."
-  docker compose --env-file "$ENV_FILE" -f "$BACKEND_COMPOSE" "$@"
+  load_backend_env
+  [[ -f "$BACKEND_COMPOSE" ]] || fail "Backend Compose file not found: $BACKEND_COMPOSE"
+  docker compose --env-file "$BACKEND_ENV_FILE" -f "$BACKEND_COMPOSE" "$@"
+}
+
+expected_postgres_data_dir() {
+  resolve_backend
+  readlink -m "$BACKEND_DIR/.data/postgres"
+}
+
+current_postgres_data_dir() {
+  docker inspect fida-ride-postgres \
+    --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Source}}{{end}}{{end}}' \
+    2>/dev/null || true
+}
+
+assert_postgres_mount_safe() {
+  require_command docker
+  resolve_backend
+
+  local actual expected
+  actual="$(current_postgres_data_dir)"
+  [[ -z "$actual" ]] && return 0
+
+  expected="$(expected_postgres_data_dir)"
+  actual="$(readlink -m "$actual")"
+
+  if [[ "$actual" != "$expected" ]]; then
+    fail "Existing fida-ride-postgres uses $actual, but the selected Fida-Ride checkout expects $expected. Refusing to recreate or repoint the database container. Run ./deploy/backend.sh doctor and inspect both data directories before continuing."
+  fi
 }
 
 validate_config() {
   require_command docker
   docker compose version >/dev/null
   compose config --quiet
-  log 'Docker Compose configuration is valid.'
+  log "Docker Compose configuration is valid for $BACKEND_DIR."
+}
+
+doctor() {
+  require_command docker
+  resolve_backend
+
+  log "Backend mode: $BACKEND_MODE"
+  log "Backend checkout: $BACKEND_DIR"
+  log "Backend Compose: $BACKEND_COMPOSE"
+  log "Backend environment: $BACKEND_ENV_FILE"
+  log "Expected PostgreSQL data: $(expected_postgres_data_dir)"
+
+  local actual
+  actual="$(current_postgres_data_dir)"
+  if [[ -z "$actual" ]]; then
+    log 'fida-ride-postgres does not currently exist.'
+    return 0
+  fi
+
+  log "Current fida-ride-postgres data: $(readlink -m "$actual")"
+  assert_postgres_mount_safe
+  log 'PostgreSQL container mount matches the selected Fida-Ride checkout.'
 }
 
 wait_for_postgres() {
@@ -167,6 +289,7 @@ SQL
 }
 
 migration_files() {
+  resolve_backend
   printf '%s\n' "$BACKEND_DIR"/database/migrations/schema-v*.sql | sort -V
 }
 
@@ -204,7 +327,8 @@ apply_pending_migrations() {
 migrate() {
   require_command sha256sum
   sync_backend
-  require_env_file
+  load_backend_env
+  assert_postgres_mount_safe
   compose up -d postgres redis
   wait_for_postgres
 
@@ -225,7 +349,8 @@ migrate() {
 adopt_existing() {
   require_command sha256sum
   sync_backend
-  require_env_file
+  load_backend_env
+  assert_postgres_mount_safe
   compose up -d postgres redis
   wait_for_postgres
 
@@ -257,8 +382,9 @@ start_stack() {
   require_command docker
   docker compose version >/dev/null
   sync_backend
-  require_env_file
+  load_backend_env
   validate_config
+  assert_postgres_mount_safe
 
   compose up -d postgres redis
   wait_for_postgres
@@ -279,7 +405,8 @@ start_stack() {
 
 health() {
   require_command curl
-  load_env
+  load_control_env
+  load_backend_env
 
   local health_host="$SERVICE_BIND_IP"
   if [[ "$health_host" == '0.0.0.0' || "$health_host" == '::' ]]; then
@@ -303,8 +430,15 @@ health() {
   fi
 }
 
+show_status() {
+  resolve_backend
+  log "Using backend checkout: $BACKEND_DIR"
+  compose ps
+}
+
 show_version() {
-  sync_backend
+  resolve_backend
+  [[ -d "$BACKEND_DIR/.git" ]] || fail "Backend source not found: $BACKEND_DIR"
   git -C "$BACKEND_DIR" show -s --format='backend %H%ncommit date: %cI%nsubject: %s' HEAD
 }
 
@@ -320,8 +454,11 @@ main() {
       sync_backend
       ;;
     config)
-      sync_backend
+      resolve_backend
       validate_config
+      ;;
+    doctor)
+      doctor
       ;;
     up)
       start_stack
@@ -333,23 +470,23 @@ main() {
       adopt_existing
       ;;
     restart)
-      sync_backend
+      resolve_backend
+      assert_postgres_mount_safe
       compose restart nestjs-core-api go-telemetry-service
       ;;
     status)
-      sync_backend
-      compose ps
+      show_status
       ;;
     health)
-      require_env_file
       health
       ;;
     logs)
-      sync_backend
+      resolve_backend
       compose logs -f --tail=200 "$@"
       ;;
     down)
-      sync_backend
+      resolve_backend
+      assert_postgres_mount_safe
       compose down
       ;;
     version)
