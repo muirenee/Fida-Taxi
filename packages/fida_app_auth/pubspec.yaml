@@ -10,6 +10,7 @@ environment:
 
 dependencies:
   fida_api: ^0.1.0
+  fida_core: ^0.1.0
   fida_design_system: ^0.1.0
   flutter:
     sdk: flutter
