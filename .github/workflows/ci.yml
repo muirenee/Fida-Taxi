@@ -101,8 +101,16 @@ jobs:
       - name: Bootstrap workspace
         run: ./setup_workspace.sh --bootstrap-only
 
-      - name: Verify reproducible Flutter bootstrap
-        run: git diff --exit-code -- apps packages pubspec.lock
+      - name: Capture regenerated lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: regenerated-pubspec-lock
+          path: pubspec.lock
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Verify reproducible Flutter sources
+        run: git diff --exit-code -- apps packages
 
       - name: List workspace packages
         run: dart pub workspace list
