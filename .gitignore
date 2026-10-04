@@ -7,6 +7,14 @@ build/
 coverage/
 pubspec_overrides.yaml
 
+# Node / NestJS
+node_modules/
+dist/
+npm-debug.log*
+
+# Go
+services/telemetry/telemetry
+
 # IDE
 .idea/
 *.iml
@@ -38,5 +46,6 @@ service-account*.json
 google-services.json
 GoogleService-Info.plist
 
-# Server deployment runtime
+# Legacy deployment runtime from the short-lived Fida-Ride coupling.
+# New Fida-Taxi deployments do not use this directory.
 .runtime/
