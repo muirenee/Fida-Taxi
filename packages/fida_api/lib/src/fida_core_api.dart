@@ -1,11 +1,14 @@
 import 'dart:convert';
 
+import 'package:fida_core/fida_core.dart';
 import 'package:http/http.dart' as http;
 
 import 'api_configuration.dart';
 import 'api_exception.dart';
 import 'models/auth_models.dart';
+import 'models/map_models.dart';
 import 'models/ride_models.dart';
+import 'models/tracking_models.dart';
 
 final class FidaCoreApi {
   FidaCoreApi({required this.configuration, http.Client? client})
@@ -62,6 +65,70 @@ final class FidaCoreApi {
     );
 
     return RegisteredDriver.fromJson(json);
+  }
+
+  Future<List<MapPlace>> searchPlaces({
+    required AuthSession session,
+    required String query,
+    GeoPoint? near,
+  }) async {
+    final json = await _get(
+      'maps/search',
+      accessToken: session.accessToken,
+      queryParameters: <String, String>{
+        'q': query.trim(),
+        if (near != null) 'latitude': '${near.latitude}',
+        if (near != null) 'longitude': '${near.longitude}',
+      },
+    );
+    final rawPlaces = json['places'];
+    if (rawPlaces is! List<Object?>) {
+      throw const FormatException('places must be an array.');
+    }
+
+    return rawPlaces.map((value) {
+      if (value is! Map<Object?, Object?>) {
+        throw const FormatException('place must be an object.');
+      }
+      return MapPlace.fromJson(Map<String, dynamic>.from(value));
+    }).toList(growable: false);
+  }
+
+  Future<MapPlace> reverseGeocode({
+    required AuthSession session,
+    required GeoPoint point,
+  }) async {
+    final json = await _get(
+      'maps/reverse',
+      accessToken: session.accessToken,
+      queryParameters: <String, String>{
+        'latitude': '${point.latitude}',
+        'longitude': '${point.longitude}',
+      },
+    );
+    final rawPlace = json['place'];
+    if (rawPlace is! Map<Object?, Object?>) {
+      throw const FormatException('place must be an object.');
+    }
+    return MapPlace.fromJson(Map<String, dynamic>.from(rawPlace));
+  }
+
+  Future<RoutePreview> getRoutePreview({
+    required AuthSession session,
+    required GeoPoint pickup,
+    required GeoPoint dropoff,
+  }) async {
+    final json = await _get(
+      'maps/route',
+      accessToken: session.accessToken,
+      queryParameters: <String, String>{
+        'pickup_lat': '${pickup.latitude}',
+        'pickup_lng': '${pickup.longitude}',
+        'dropoff_lat': '${dropoff.latitude}',
+        'dropoff_lng': '${dropoff.longitude}',
+      },
+    );
+    return RoutePreview.fromJson(json);
   }
 
   Future<RideRequestResult> requestRide({
@@ -135,6 +202,34 @@ final class FidaCoreApi {
     );
 
     return DriverAvailabilityState.fromJson(json);
+  }
+
+  Future<DriverLocationAck> updateDriverLocation({
+    required AuthSession session,
+    required GeoPoint point,
+  }) async {
+    _requireRole(session, AuthRole.driver);
+    final json = await _post(
+      'rides/driver/location',
+      body: <String, dynamic>{
+        'latitude': point.latitude,
+        'longitude': point.longitude,
+      },
+      accessToken: session.accessToken,
+    );
+    return DriverLocationAck.fromJson(json);
+  }
+
+  Future<TripDriverLocation?> getTripDriverLocation({
+    required AuthSession session,
+    required String tripId,
+  }) async {
+    final json = await _get(
+      'rides/${Uri.encodeComponent(tripId)}/driver-location',
+      accessToken: session.accessToken,
+    );
+    if (json['driver_id'] == null || json['location'] == null) return null;
+    return TripDriverLocation.fromEnvelope(json);
   }
 
   Future<RideOfferBatch> getDriverOffers(AuthSession session) async {
@@ -219,6 +314,7 @@ final class FidaCoreApi {
   Future<Map<String, dynamic>> _get(
     String path, {
     String? accessToken,
+    Map<String, String> queryParameters = const <String, String>{},
     Map<String, String> extraHeaders = const <String, String>{},
   }) async {
     final headers = <String, String>{
@@ -229,10 +325,11 @@ final class FidaCoreApi {
 
     late final http.Response response;
     try {
-      response = await _client.get(
-        configuration.endpoint(path),
-        headers: headers,
-      );
+      var endpoint = configuration.endpoint(path);
+      if (queryParameters.isNotEmpty) {
+        endpoint = endpoint.replace(queryParameters: queryParameters);
+      }
+      response = await _client.get(endpoint, headers: headers);
     } on http.ClientException catch (error) {
       throw FidaApiException(
         message: 'Unable to reach the Fida Taxi API.',
