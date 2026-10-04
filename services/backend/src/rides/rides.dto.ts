@@ -67,6 +67,20 @@ export class DriverAvailabilityDto {
   longitude?: number;
 }
 
+export class DriverLocationDto {
+  @Type(() => Number)
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(-90)
+  @Max(90)
+  latitude!: number;
+
+  @Type(() => Number)
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(-180)
+  @Max(180)
+  longitude!: number;
+}
+
 export class DriverTripActionDto {
   @IsIn(['en_route', 'arrive', 'start', 'complete'])
   action!: 'en_route' | 'arrive' | 'start' | 'complete';
