@@ -86,12 +86,14 @@ final class FidaCoreApi {
       throw const FormatException('places must be an array.');
     }
 
-    return rawPlaces.map((value) {
-      if (value is! Map<Object?, Object?>) {
-        throw const FormatException('place must be an object.');
-      }
-      return MapPlace.fromJson(Map<String, dynamic>.from(value));
-    }).toList(growable: false);
+    return rawPlaces
+        .map((value) {
+          if (value is! Map<Object?, Object?>) {
+            throw const FormatException('place must be an object.');
+          }
+          return MapPlace.fromJson(Map<String, dynamic>.from(value));
+        })
+        .toList(growable: false);
   }
 
   Future<MapPlace> reverseGeocode({
