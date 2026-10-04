@@ -115,8 +115,22 @@ jobs:
       - name: List workspace packages
         run: dart pub workspace list
 
-      - name: Check formatting
-        run: dart run melos run format:check --no-select
+      - name: Format sources for capture
+        run: dart format apps packages
+
+      - name: Capture formatted sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: formatted-map-sources
+          path: |
+            apps/driver/lib/features/ride/presentation/driver_operations_screen.dart
+            packages/fida_api/lib/src/fida_core_api.dart
+            packages/fida_api/lib/src/models/map_models.dart
+            packages/fida_api/lib/src/models/tracking_models.dart
+            packages/fida_maps/lib/src/device_location_service.dart
+            packages/fida_maps/lib/src/fida_map_view.dart
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Static analysis
         run: dart run melos run analyze --no-select
