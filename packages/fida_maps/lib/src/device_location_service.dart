@@ -16,9 +16,7 @@ final class DeviceLocationService {
   Future<GeoPoint> current() async {
     await _ensurePermission();
     final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-      ),
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
     return _toPoint(position);
   }
@@ -65,9 +63,6 @@ final class DeviceLocationService {
   }
 
   GeoPoint _toPoint(Position position) {
-    return GeoPoint(
-      latitude: position.latitude,
-      longitude: position.longitude,
-    );
+    return GeoPoint(latitude: position.latitude, longitude: position.longitude);
   }
 }
