@@ -23,7 +23,7 @@ class DriverOperationsScreen extends StatefulWidget {
 }
 
 class _DriverOperationsScreenState extends State<DriverOperationsScreen> {
-  static const GeoPoint _kigaliCenter = GeoPoint(
+  static final GeoPoint _kigaliCenter = GeoPoint(
     latitude: -1.9441,
     longitude: 30.0619,
   );

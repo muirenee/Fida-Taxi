@@ -23,7 +23,7 @@ class RiderBookingScreen extends StatefulWidget {
 }
 
 class _RiderBookingScreenState extends State<RiderBookingScreen> {
-  static const GeoPoint _kigaliCenter = GeoPoint(
+  static final GeoPoint _kigaliCenter = GeoPoint(
     latitude: -1.9441,
     longitude: 30.0619,
   );
