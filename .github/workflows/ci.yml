@@ -27,6 +27,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Validate deployment scripts
+        run: bash -n deploy/backend.sh
+
       - name: Set up Java
         uses: actions/setup-java@v6
         with:
