@@ -14,15 +14,20 @@ import { AuthenticatedRequest, JwtAuthGuard } from '../auth/auth.guard';
 import {
   CancelRideDto,
   DriverAvailabilityDto,
+  DriverLocationDto,
   DriverTripActionDto,
   RequestRideDto,
 } from './rides.dto';
 import { RidesService } from './rides.service';
+import { TrackingService } from './tracking.service';
 
 @Controller('rides')
 @UseGuards(JwtAuthGuard)
 export class RidesController {
-  constructor(private readonly rides: RidesService) {}
+  constructor(
+    private readonly rides: RidesService,
+    private readonly tracking: TrackingService,
+  ) {}
 
   @Post('request')
   request(@Req() request: AuthenticatedRequest, @Body() dto: RequestRideDto) {
@@ -51,6 +56,23 @@ export class RidesController {
     @Body() dto: DriverAvailabilityDto,
   ) {
     return this.rides.setDriverAvailability(request.user, dto);
+  }
+
+  @Post('driver/location')
+  @HttpCode(HttpStatus.OK)
+  driverLocation(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: DriverLocationDto,
+  ) {
+    return this.tracking.updateDriverLocation(request.user, dto);
+  }
+
+  @Get(':tripId/driver-location')
+  driverLocationForTrip(
+    @Req() request: AuthenticatedRequest,
+    @Param('tripId', new ParseUUIDPipe()) tripId: string,
+  ) {
+    return this.tracking.getDriverLocation(tripId, request.user);
   }
 
   @Get(':tripId')

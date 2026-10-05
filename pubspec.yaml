@@ -12,6 +12,7 @@ workspace:
   - packages/fida_api
   - packages/fida_app_auth
   - packages/fida_design_system
+  - packages/fida_maps
 
 dev_dependencies:
   melos: ^8.9.0

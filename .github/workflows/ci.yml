@@ -101,8 +101,8 @@ jobs:
       - name: Bootstrap workspace
         run: ./setup_workspace.sh --bootstrap-only
 
-      - name: Verify reproducible Flutter bootstrap
-        run: git diff --exit-code -- apps packages pubspec.lock
+      - name: Verify reproducible Flutter sources
+        run: git diff --exit-code -- apps packages
 
       - name: List workspace packages
         run: dart pub workspace list

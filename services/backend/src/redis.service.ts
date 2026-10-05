@@ -47,6 +47,20 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     await this.client.zRem(key, member);
   }
 
+  async geoPosition(
+    key: string,
+    member: string,
+  ): Promise<{ latitude: number; longitude: number } | null> {
+    const positions = await this.client.geoPos(key, member);
+    const position = positions[0];
+    if (!position) return null;
+
+    return {
+      latitude: Number(position.latitude),
+      longitude: Number(position.longitude),
+    };
+  }
+
   async nearbyDriverIds(
     longitude: number,
     latitude: number,
